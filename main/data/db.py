@@ -41,12 +41,16 @@ def create_api_key() -> str:
     return hash
 
 async def create_user(user: UserDTO) -> bool | None:
-    if not user.username or not user.password:
+    if not user.username or not user.password or not user.email:
         print("[!] - Credentials missing")
         return
  
+    if not user.email.endswith("@gmail.com") or not user.email.endswith("@hotmail.com"):
+        print("[!] Invalid email to register")
+        return
+ 
     user.password = hash_password(user.password)
-    cursor.execute("INSERT INTO Users(username, password_hash) VALUES (%s, %s)", [user.username, user.password])    
+    cursor.execute("INSERT INTO Users(username, email, password_hash) VALUES (%s, %s, %s)", [user.username, user.email, user.password])    
     conn.commit()
     return True
 
@@ -55,7 +59,8 @@ async def remove_user(user: UserDTO) -> bool | None:
         print("[!] - ID missing to remove user")
         return 
     
-    cursor.execute("DELETE FROM Users WHERE user_id=%s", [str(user.id)])
+    cursor.execute("DELETE FROM ApiKeys where ownter_id=%s", [user.id])
+    cursor.execute("DELETE FROM Users WHERE user_id=%s", [user.id])
     conn.commit()
     return True
     
