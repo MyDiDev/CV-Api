@@ -1,9 +1,10 @@
 import psycopg
 from dotenv import load_dotenv
-from os import getenv
-from dto.user import UserDTO
+from os import getenv, urandom
+from dto.user import UserDTO, APIKey
 from dto.logs import Log
 from pwdlib import PasswordHash
+import hashlib
 
 load_dotenv()
 password_hash = PasswordHash.recommended()
@@ -31,6 +32,13 @@ def hash_password(pwd: str) -> str:
 
 def verify_password_hash(pwd: str, hash: str) -> bool:
     return password_hash.verify(pwd, hash)
+
+def compare_api_keys(hash:str, db_hash:str) -> bool:
+    return hash == db_hash
+
+def create_api_key() -> str:
+    hash = hashlib.sha256(urandom(32)).hexdigest()
+    return hash
 
 def create_user(user: UserDTO) -> bool | None:
     if not user.username or not user.password:
@@ -103,5 +111,46 @@ def update_log(log: Log) -> bool | None:
         return
     
     cursor.execute("UPDATE Logs SET status = %s WHERE log_id = %s", [log.status, log.id])
+    conn.commit()
+    return True
+
+def get_user_api_keys(user: UserDTO) -> dict | None:
+    if not user.username or not user.password:
+        print("[!] - Invalid credentials from user to create api key")
+        return  
+    
+    usr = get_user(user)
+    if not usr:
+        print("[!] - Invalid user to create api key")
+        return  
+        
+    cursor.execute("SELECT * FROM ApiKeys WHERE owner_id = %s", [usr["id"]])
+    res = [rw for rw in cursor.fetchall()]
+    return {"api_keys":res}
+
+def save_api_key(user: UserDTO) -> dict | None:
+    if not user.username or not user.password:
+        print("[!] - Invalid credentials from user to create api key")
+        return  
+
+    usr = get_user(user)
+    if not usr:
+        print("[!] - Invalid user to create api key")
+        return  
+        
+    api_key = APIKey(owner_id=usr["id"], key_hash=create_api_key(), usage_count=0)
+    
+    cursor.execute("INSERT INTO ApiKeys(owner_id, key_hash, usage_count) VALUES(%s, %s, %s)", [api_key.owner_id, api_key.key_hash, api_key.usage_count])
+    api_keys: dict | None = get_user_api_keys(user)
+    conn.commit()
+    
+    return {"api_keys": api_keys}
+
+def remove_api_key(key: APIKey) -> bool | None:
+    if not key.owner_id or not key.key_hash:
+        print("[!] - Invalid credentials from key to remove api key")
+        return  
+
+    cursor.execute("DELETE FROM ApiKeys WHERE owner_id = %s and hash_key = %s", [key.owner_id, key.key_hash])
     conn.commit()
     return True
