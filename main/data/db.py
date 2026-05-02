@@ -1,8 +1,8 @@
 import psycopg
 from dotenv import load_dotenv
 from os import getenv, urandom
-from main.dto.user import UserDTO, APIKey
-from main.dto.logs import Log
+from dto.user import UserDTO, APIKey
+from dto.logs import Log
 from pwdlib import PasswordHash
 import hashlib
 
@@ -33,19 +33,24 @@ def hash_password(pwd: str) -> str:
 def verify_password_hash(pwd: str, hash: str) -> bool:
     return password_hash.verify(pwd, hash)
 
+
+def hash_api_key(key: str):
+    return hashlib.sha256(key.encode()).hexdigest()
+
 def compare_api_keys(key:str, db_hash:str) -> bool:
-    return hashlib.sha256(key.encode()).hexdigest() == db_hash
+    return hash_api_key(key) == db_hash
 
 def create_api_key() -> str:
     hash = hashlib.sha256(urandom(32)).hexdigest()
     return hash
+
 
 async def create_user(user: UserDTO) -> bool | None:
     if not user.username or not user.password or not user.email:
         print("[!] - Credentials missing")
         return
  
-    if not user.email.endswith("@gmail.com") or not user.email.endswith("@hotmail.com"):
+    if not user.email.endswith("@gmail.com") and not user.email.endswith("@hotmail.com"):
         print("[!] Invalid email to register")
         return
  
@@ -90,8 +95,9 @@ async def get_user(user: UserDTO) -> dict | None:
     if verify_password_hash(user.password, user_password):
         return {"id":res[0], "username":user.username, "password":user.password}
 
+
 async def register_log(log: Log) -> dict | None:
-    if not log.api_key_id or not log.tokens_used or not log.response_time:
+    if not log.api_key_id or not log.tokens_used:
         print("[!] - Log information missing")
         return
     
@@ -102,7 +108,7 @@ async def register_log(log: Log) -> dict | None:
         print("[!] - Invalid api key to register log")
         return 
     
-    cursor.execute("INSERT INTO Logs(api_key_id, tokens_used, response_time) VALUES(%s, %s, %s)", [log.api_key_id, log.tokens_used, log.response_time])
+    cursor.execute("INSERT INTO Logs(api_key_id, tokens_used, response_time) VALUES(%s, %s, %s)", [log.api_key_id, log.tokens_used, 0])
     
     cursor.execute("SELECT * FROM Logs")
     res = cursor.fetchall()[-1]
@@ -119,7 +125,19 @@ async def update_log(log: Log) -> bool | None:
     conn.commit()
     return True
 
-async def get_user_api_keys(user: UserDTO) -> dict | None:
+
+async def validate_api_key(key: str) -> dict | None:
+    if not key:
+        print("[!] - Invalid API Key")
+        return
+
+    key_hash = hash_api_key(key)
+    cursor.execute("SELECT key_hash FROM ApiKeys WHERE key_hash=%s", (key_hash))
+    res = cursor.fetchone()
+    
+    return {"api_key":res[0]} if res != None else None
+
+async def get_user_api_keys(user: UserDTO) -> dict[str, list] | dict[str, None] | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
@@ -131,9 +149,10 @@ async def get_user_api_keys(user: UserDTO) -> dict | None:
         
     cursor.execute("SELECT * FROM ApiKeys WHERE owner_id = %s", [usr["id"]])
     res = [rw for rw in cursor.fetchall()]
+    if len(res) == 0: return {"api_keys":None}
     return {"api_keys":res}
 
-async def save_api_key(user: UserDTO) -> dict | None:
+async def save_api_key(user: UserDTO) -> tuple | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
@@ -146,10 +165,11 @@ async def save_api_key(user: UserDTO) -> dict | None:
     api_key = APIKey(owner_id=usr["id"], key_hash=create_api_key(), usage_count=0)
     
     cursor.execute("INSERT INTO ApiKeys(owner_id, key_hash, usage_count) VALUES(%s, %s, %s)", [api_key.owner_id, api_key.key_hash, api_key.usage_count])
-    api_keys: dict | None = await get_user_api_keys(user)
-    conn.commit()
+    cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s", (api_key.key_hash))
+    res = cursor.fetchone()
     
-    return {"api_keys": api_keys}
+    conn.commit()
+    return res
 
 async def remove_api_key(key: APIKey) -> bool | None:
     if not key.owner_id or not key.key_hash:

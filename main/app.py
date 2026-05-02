@@ -14,8 +14,8 @@ app.add_middleware(CORSMiddleware,
     allow_headers=["*"]
 )
 
-app.add_api_route("/api/curriculums", curriculum_router)
-app.add_api_route("/api/auth", auth_router)
+app.include_router(curriculum_router)
+app.include_router(auth_router)
 
 @app.get("/")
 async def get_health() -> dict:

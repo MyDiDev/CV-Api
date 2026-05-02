@@ -1,5 +1,8 @@
 from google import genai
 from dotenv import load_dotenv
+from data.db import register_log, update_log
+from dto.logs import Log
+from dto.user import APIKey
 import json
 import os
 
@@ -79,11 +82,27 @@ Additional constraints:
 - Do not hallucinate experience or skills not present in the CV.
 - Keep language professional and neutral."""
 
-async def evaluate_cv_document(content: str) -> dict | None:
+async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
   if not content: raise Exception("Invalid CV document content to process")
 
   client = genai.Client(api_key=os.getenv("API_KEY"))
+  
+  
   try:
+    tokens_count = client.models.count_tokens(model="gemini-2.5-flash",
+      contents={"text":f"""
+      {MODEL_ROLE}
+      
+      Evalutate this CV:
+      
+      {content}          
+      """})
+    
+    # log_res = await register_log(Log(api_key_id=api_key.id, tokens_used=tokens_count.total_tokens))
+     
+    # if log_res is not None: log_res = log_res.get("log")
+    # else: print("[!] - Invalid log registered")
+    
     response = client.models.generate_content(
       model="gemini-2.5-flash",
       contents={"text":f"""
@@ -98,13 +117,15 @@ async def evaluate_cv_document(content: str) -> dict | None:
         "response_mime_type":"application/json"
       }
     )
+    
     res_txt = str(response.text).strip() if response else None 
     
     if not res_txt:
       print("[!] - Invalid response error")
-      return {"error": "Invalid response or JSON from model error", "raw":res_txt}
+      return {"error": "Invalid response or JSON from model", "raw":res_txt}
     if res_txt.startswith("```"): res_txt.replace("```", "")
-    
+   
+
     return json.loads(res_txt)
   except Exception as ex:
       print("[!] - Exception ocurred: {}".format(ex))
