@@ -1,13 +1,8 @@
 from pydantic import BaseModel
 
 class UserDTO(BaseModel):
-    id: int
-    username: str
-    password: str
-    role: str 
-    dateRegistered: str
-
-class UserAuthDTO(BaseModel):
-    username: str
-    password: str
-    
+    id: int | None = None
+    username: str | None = None
+    password: str | None = None
+    role: str | None = None 
+    dateRegistered: str | None = None
