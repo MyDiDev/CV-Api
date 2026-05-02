@@ -57,7 +57,7 @@ def update_user(user: UserDTO) -> bool | None:
         return
     
     user.password = hash_password(user.password)
-    cursor.execute("UPDATE FROM Users SET username=%s, password=%s, role=%s WHERE user_id=%s", [user.username, user.password, user.role, user.id]) 
+    cursor.execute("UPDATE Users SET username=%s, password=%s, role=%s WHERE user_id=%s", [user.username, user.password, user.role, user.id]) 
     conn.commit()
     return True
 
@@ -76,3 +76,32 @@ def get_user(user: UserDTO) -> dict | None:
     user_password = res[2]
     if verify_password_hash(user.password, user_password):
         return {"id":res[0], "username":user.username, "password":user.password}
+
+def register_log(log: Log) -> dict | None:
+    if not log.api_key_id or not log.tokens_used or not log.response_time:
+        print("[!] - Log information missing")
+        return
+    
+    cursor.execute("SELECT * FROM ApiKeys WHERE key_id=%s", [log.api_key_id])
+    res = cursor.fetchone()
+    
+    if not res or len(res) == 0:
+        print("[!] - Invalid api key to register log")
+        return 
+    
+    cursor.execute("INSERT INTO Logs(api_key_id, tokens_used, response_time) VALUES(%s, %s, %s)", [log.api_key_id, log.tokens_used, log.response_time])
+    
+    cursor.execute("SELECT * FROM Logs")
+    res = cursor.fetchall()[-1]
+    
+    conn.commit()
+    return {"log": res}
+
+def update_log(log: Log) -> bool | None:
+    if not log.id or not log.status:
+        print("[!] - Log ID and Status Missing to update")
+        return
+    
+    cursor.execute("UPDATE Logs SET status = %s WHERE log_id = %s", [log.status, log.id])
+    conn.commit()
+    return True
