@@ -79,7 +79,7 @@ Additional constraints:
 - Do not hallucinate experience or skills not present in the CV.
 - Keep language professional and neutral."""
 
-def evaluate_cv_document(content: str) -> dict | None:
+async def evaluate_cv_document(content: str) -> dict | None:
   if not content: raise Exception("Invalid CV document content to process")
 
   client = genai.Client(api_key=os.getenv("API_KEY"))
