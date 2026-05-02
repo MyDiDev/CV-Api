@@ -1,8 +1,8 @@
 import psycopg
 from dotenv import load_dotenv
 from os import getenv, urandom
-from dto.user import UserDTO, APIKey
-from dto.logs import Log
+from main.dto.user import UserDTO, APIKey
+from main.dto.logs import Log
 from pwdlib import PasswordHash
 import hashlib
 
@@ -33,14 +33,14 @@ def hash_password(pwd: str) -> str:
 def verify_password_hash(pwd: str, hash: str) -> bool:
     return password_hash.verify(pwd, hash)
 
-def compare_api_keys(hash:str, db_hash:str) -> bool:
-    return hash == db_hash
+def compare_api_keys(key:str, db_hash:str) -> bool:
+    return hashlib.sha256(key.encode()).hexdigest() == db_hash
 
 def create_api_key() -> str:
     hash = hashlib.sha256(urandom(32)).hexdigest()
     return hash
 
-def create_user(user: UserDTO) -> bool | None:
+async def create_user(user: UserDTO) -> bool | None:
     if not user.username or not user.password:
         print("[!] - Credentials missing")
         return
@@ -50,7 +50,7 @@ def create_user(user: UserDTO) -> bool | None:
     conn.commit()
     return True
 
-def remove_user(user: UserDTO) -> bool | None:
+async def remove_user(user: UserDTO) -> bool | None:
     if not user.id:
         print("[!] - ID missing to remove user")
         return 
@@ -59,7 +59,7 @@ def remove_user(user: UserDTO) -> bool | None:
     conn.commit()
     return True
     
-def update_user(user: UserDTO) -> bool | None:
+async def update_user(user: UserDTO) -> bool | None:
     if not user.id or not user.username or not user.password:
         print("[!] - Credentials missing to update user")
         return
@@ -69,7 +69,7 @@ def update_user(user: UserDTO) -> bool | None:
     conn.commit()
     return True
 
-def get_user(user: UserDTO) -> dict | None:
+async def get_user(user: UserDTO) -> dict | None:
     if not user.username or not user.password:
         print("[!] - Credentials missing to get user")
         return 
@@ -85,7 +85,7 @@ def get_user(user: UserDTO) -> dict | None:
     if verify_password_hash(user.password, user_password):
         return {"id":res[0], "username":user.username, "password":user.password}
 
-def register_log(log: Log) -> dict | None:
+async def register_log(log: Log) -> dict | None:
     if not log.api_key_id or not log.tokens_used or not log.response_time:
         print("[!] - Log information missing")
         return
@@ -105,7 +105,7 @@ def register_log(log: Log) -> dict | None:
     conn.commit()
     return {"log": res}
 
-def update_log(log: Log) -> bool | None:
+async def update_log(log: Log) -> bool | None:
     if not log.id or not log.status:
         print("[!] - Log ID and Status Missing to update")
         return
@@ -114,12 +114,12 @@ def update_log(log: Log) -> bool | None:
     conn.commit()
     return True
 
-def get_user_api_keys(user: UserDTO) -> dict | None:
+async def get_user_api_keys(user: UserDTO) -> dict | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
     
-    usr = get_user(user)
+    usr = await get_user(user)
     if not usr:
         print("[!] - Invalid user to create api key")
         return  
@@ -128,25 +128,25 @@ def get_user_api_keys(user: UserDTO) -> dict | None:
     res = [rw for rw in cursor.fetchall()]
     return {"api_keys":res}
 
-def save_api_key(user: UserDTO) -> dict | None:
+async def save_api_key(user: UserDTO) -> dict | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
 
-    usr = get_user(user)
+    usr = await get_user(user)
     if not usr:
         print("[!] - Invalid user to create api key")
         return  
-        
+    
     api_key = APIKey(owner_id=usr["id"], key_hash=create_api_key(), usage_count=0)
     
     cursor.execute("INSERT INTO ApiKeys(owner_id, key_hash, usage_count) VALUES(%s, %s, %s)", [api_key.owner_id, api_key.key_hash, api_key.usage_count])
-    api_keys: dict | None = get_user_api_keys(user)
+    api_keys: dict | None = await get_user_api_keys(user)
     conn.commit()
     
     return {"api_keys": api_keys}
 
-def remove_api_key(key: APIKey) -> bool | None:
+async def remove_api_key(key: APIKey) -> bool | None:
     if not key.owner_id or not key.key_hash:
         print("[!] - Invalid credentials from key to remove api key")
         return  
@@ -154,3 +154,4 @@ def remove_api_key(key: APIKey) -> bool | None:
     cursor.execute("DELETE FROM ApiKeys WHERE owner_id = %s and hash_key = %s", [key.owner_id, key.key_hash])
     conn.commit()
     return True
+
