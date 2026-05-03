@@ -2,7 +2,7 @@ from fastapi import Depends
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from model.model import evaluate_cv_document
+from main.data.model import evaluate_cv_document
 from data.db import validate_api_key
 
 security = HTTPBearer()
@@ -28,6 +28,6 @@ async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
         return HTTPException(status_code=400, detail="Invalid API key")
     print(api_key)
     
-    # res = await evaluate_cv_document(data["content"])
+    res = await evaluate_cv_document(data["content"], api_key)
     return {"res":True}
     # return {"result":res} if res != None else HTTPException(status_code=500, detail="Error while processing CV document")

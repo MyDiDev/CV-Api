@@ -108,9 +108,9 @@ async def register_log(log: Log) -> dict | None:
         print("[!] - Invalid api key to register log")
         return 
     
-    cursor.execute("INSERT INTO Logs(api_key_id, tokens_used, response_time) VALUES(%s, %s, %s)", [log.api_key_id, log.tokens_used, 0])
+    cursor.execute("INSERT INTO apilogusage(api_key_id, tokens_used, response_time) VALUES(%s, %s, %s)", [log.api_key_id, log.tokens_used, 0])
     
-    cursor.execute("SELECT * FROM Logs")
+    cursor.execute("SELECT * FROM apilogusage")
     res = cursor.fetchall()[-1]
     
     conn.commit()
@@ -121,7 +121,7 @@ async def update_log(log: Log) -> bool | None:
         print("[!] - Log ID and Status Missing to update")
         return
     
-    cursor.execute("UPDATE Logs SET status = %s WHERE log_id = %s", [log.status, log.id])
+    cursor.execute("UPDATE apilogusage SET status = %s WHERE log_id = %s", [log.status, log.id])
     conn.commit()
     return True
 
@@ -137,7 +137,7 @@ async def validate_api_key(key: str) -> dict | None:
     
     return {"api_key":res[0]} if res != None else None
 
-async def get_user_api_keys(user: UserDTO) -> dict[str, list] | dict[str, None] | None:
+async def get_user_api_keys(user: UserDTO) -> str | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
@@ -147,12 +147,13 @@ async def get_user_api_keys(user: UserDTO) -> dict[str, list] | dict[str, None] 
         print("[!] - Invalid user to create api key")
         return  
         
-    cursor.execute("SELECT * FROM ApiKeys WHERE owner_id = %s", [usr["id"]])
-    res = [rw for rw in cursor.fetchall()]
-    if len(res) == 0: return {"api_keys":None}
-    return {"api_keys":res}
+    cursor.execute("SELECT key_hash FROM ApiKeys WHERE owner_id = %s", [usr["id"]])
+    res = cursor.fetchone()
+    if res == None: return 
+    
+    return str(res[0])
 
-async def save_api_key(user: UserDTO) -> tuple | None:
+async def save_api_key(user: UserDTO) -> tuple | str | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
@@ -162,14 +163,20 @@ async def save_api_key(user: UserDTO) -> tuple | None:
         print("[!] - Invalid user to create api key")
         return  
     
+    user_api_key = await get_user_api_keys(user)
+    if user_api_key != None and len(user_api_key) > 0:
+        print("[!] - API key already created on this user")
+        return user_api_key
+    
     api_key = APIKey(owner_id=usr["id"], key_hash=create_api_key(), usage_count=0)
     
     cursor.execute("INSERT INTO ApiKeys(owner_id, key_hash, usage_count) VALUES(%s, %s, %s)", [api_key.owner_id, api_key.key_hash, api_key.usage_count])
-    cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s", (api_key.key_hash))
-    res = cursor.fetchone()
     
+    cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s", [api_key.key_hash])
+    res = cursor.fetchone()
+
     conn.commit()
-    return res
+    return res[2] if res != None else None 
 
 async def remove_api_key(key: APIKey) -> bool | None:
     if not key.owner_id or not key.key_hash:

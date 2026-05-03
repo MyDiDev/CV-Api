@@ -1,8 +1,8 @@
 from google import genai
 from dotenv import load_dotenv
 from data.db import register_log, update_log
-from dto.logs import Log
-from dto.user import APIKey
+from main.dto.logs import Log
+from main.dto.user import APIKey
 import json
 import os
 
@@ -82,26 +82,29 @@ Additional constraints:
 - Do not hallucinate experience or skills not present in the CV.
 - Keep language professional and neutral."""
 
+async def update_task_log(log_res):
+  if log_res != None:
+    res = await update_log(Log(id=log_res[0], status="done"))
+    if res: print("Log Updated Successfully")
+  print("[!]- Invalid log updated")
+  return
+
 async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
   if not content: raise Exception("Invalid CV document content to process")
-
+  
   client = genai.Client(api_key=os.getenv("API_KEY"))
-  
-  
   try:
     tokens_count = client.models.count_tokens(model="gemini-2.5-flash",
       contents={"text":f"""
-      {MODEL_ROLE}
-      
-      Evalutate this CV:
-      
-      {content}          
+{MODEL_ROLE}
+
+Evalutate this CV:
+
+{content}          
       """})
     
-    # log_res = await register_log(Log(api_key_id=api_key.id, tokens_used=tokens_count.total_tokens))
-     
-    # if log_res is not None: log_res = log_res.get("log")
-    # else: print("[!] - Invalid log registered")
+    log_res = await register_log(Log(api_key_id=api_key.id, tokens_used=tokens_count.total_tokens))
+    log_res = log_res.get("log") if log_res != None else None
     
     response = client.models.generate_content(
       model="gemini-2.5-flash",
@@ -119,13 +122,14 @@ async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
     )
     
     res_txt = str(response.text).strip() if response else None 
-    
     if not res_txt:
       print("[!] - Invalid response error")
+      await update_task_log(log_res)
       return {"error": "Invalid response or JSON from model", "raw":res_txt}
     if res_txt.startswith("```"): res_txt.replace("```", "")
-   
-
-    return json.loads(res_txt)
+    
+    await update_task_log(log_res)
+    return json.loads(res_txt)    
   except Exception as ex:
-      print("[!] - Exception ocurred: {}".format(ex))
+    print("[!] - Exception while evaluating CV")
+    return
