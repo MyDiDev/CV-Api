@@ -103,7 +103,6 @@ async def get_user(user: UserDTO) -> dict | None:
     if verify_password_hash(user.password, user_password):
         return {"id":res[0], "username":user.username, "password":user.password}
 
-
 async def register_log(log: Log) -> dict | None:
     if not log.api_key_id or not log.tokens_used:
         print("[!] - Log information missing")
@@ -129,7 +128,7 @@ async def update_log(log: Log) -> bool | None:
         print("[!] - Log ID and Status Missing to update")
         return
     
-    cursor.execute("UPDATE apilogusage SET status = %s WHERE log_id = %s", [log.status, log.id])
+    cursor.execute("UPDATE apilogusage SET status = %s, response_time = %s WHERE log_id = %s", [log.status, log.response_time, log.id])
     conn.commit()
     return True
 

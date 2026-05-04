@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from data.db import register_log, update_log
 from dto.logs import Log
 from dto.user import APIKey
+import time
 import json
 import os
 
@@ -85,7 +86,7 @@ Additional constraints:
 
 async def update_task_log(log_res):
   if log_res != None:
-    res = await update_log(Log(id=log_res[0], status="done"))
+    res = await update_log(Log(id=log_res[0], status="done", response_time=int(end-start)))
     if res: 
       print("Log Updated Successfully")
   else:
@@ -93,7 +94,9 @@ async def update_task_log(log_res):
 
 async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
   if not content: raise Exception("Invalid CV document content to process")
+  global start, end
   
+  start = time.time()
   client = genai.Client(api_key=os.getenv("API_KEY"))
   try:
     tokens_count = client.models.count_tokens(model="gemini-2.5-flash",
@@ -122,6 +125,7 @@ Evalutate this CV:
         "response_mime_type":"application/json"
       }
     )
+    end = time.time()
     
     res_txt = str(response.text).strip() if response else None 
     if not res_txt:
@@ -131,6 +135,7 @@ Evalutate this CV:
     if res_txt.startswith("```"): res_txt.replace("```", "")
     
     await update_task_log(log_res)
+    
     return json.loads(res_txt)    
   except ServiceUnavailable as ex:
     print("[!] - Serveres ar overloaded, try again later")
@@ -138,4 +143,3 @@ Evalutate this CV:
   except Exception as ex:
     print("[!] - Exception while evaluating CV")
     return
-
