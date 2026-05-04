@@ -2,19 +2,20 @@ from fastapi import Depends
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from main.data.model import evaluate_cv_document
+from model.model import evaluate_cv_document
 from data.db import validate_api_key
+from dto.user import APIKey
 
 security = HTTPBearer()
 curriculum_router = APIRouter()
 
-def get_api_key(
+async def get_api_key(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     key = credentials.credentials
-    res = validate_api_key(key)
+    res = await validate_api_key(key)
     
-    if not res or not type(res) == dict:
+    if not res:
         return HTTPException(status_code=400, detail="Invalid API Key")
     
     return res.get("api_key")
@@ -22,12 +23,14 @@ def get_api_key(
 @curriculum_router.post("/api/curriculum", tags=["curriculums"])
 async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
     if not data["content"] or len(data["content"]) == 0:
-        return HTTPException(status_code=400, detail="Invalid document data to process")
+        raise HTTPException(status_code=400, detail="Invalid document data to process")
     
-    if not api_key:
-        return HTTPException(status_code=400, detail="Invalid API key")
-    print(api_key)
+    if not api_key or len(api_key) == 0:
+        raise HTTPException(status_code=400, detail="Invalid API key")
     
+    api_key = APIKey(id=api_key[0])
     res = await evaluate_cv_document(data["content"], api_key)
-    return {"res":True}
-    # return {"result":res} if res != None else HTTPException(status_code=500, detail="Error while processing CV document")
+    if res is not None:
+        return res if res.get("error") else {"result":res}
+    
+    raise HTTPException(status_code=500, detail="Error while processing CV and analysing the document, please check body and authorization headers")

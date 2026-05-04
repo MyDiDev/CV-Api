@@ -1,8 +1,9 @@
 from google import genai
+from google.api_core.exceptions import ServiceUnavailable
 from dotenv import load_dotenv
 from data.db import register_log, update_log
-from main.dto.logs import Log
-from main.dto.user import APIKey
+from dto.logs import Log
+from dto.user import APIKey
 import json
 import os
 
@@ -43,34 +44,34 @@ Output rules:
 JSON structure:
 
 {
-  "puntaje_global": number,
-  "evaluacion": {
-    "claridad_y_estructura": {
-      "puntaje": number,
-      "comentario": string
+  "global_score": number,
+  "evaluation": {
+    "structure_and_quality": {
+      "score": number,
+      "comment": string
     },
-    "experiencia_relevante": {
-      "puntaje": number,
-      "comentario": string
+    "relevant_experience": {
+      "score": number,
+      "comment": string
     },
-    "educacion_y_formacion": {
-      "puntaje": number,
-      "comentario": string
+    "formation_and_education": {
+      "score": number,
+      "comment": string
     },
-    "habilidades": {
-      "puntaje": number,
-      "comentario": string
+    "habilities": {
+      "score": number,
+      "comment": string
     },
-    "logros_e_impacto": {
-      "puntaje": number,
-      "comentario": string
+    "goals_and_impact": {
+      "score": number,
+      "comment": string
     },
-    "adaptacion_al_puesto": {
-      "puntaje": number,
-      "comentario": string
+    "adaption_for_position": {
+      "score": number,
+      "comment": string
     }
   },
-  "sugerencias": [
+  "suggestions": [
     string,
     string,
     string
@@ -130,6 +131,10 @@ Evalutate this CV:
     
     await update_task_log(log_res)
     return json.loads(res_txt)    
+  except ServiceUnavailable as ex:
+    print("[!] - Serveres ar overloaded, try again later")
+    return {"error":ex}
   except Exception as ex:
     print("[!] - Exception while evaluating CV")
     return
+

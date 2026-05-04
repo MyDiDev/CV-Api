@@ -4,7 +4,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from data.db import get_user_api_keys, save_api_key
-from main.data.dto.user import UserDTO
+from dto.user import UserDTO
 
 user_router = APIRouter()
 
@@ -24,4 +24,4 @@ async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = UserDTO(username=data.username, password=data.password)
     res = await save_api_key(user)
     
-    return {"created": True, "api_key":res} if res != None else {"error":"invalid to create api key"}
+    return {"created": True, "api_key":res} if res != None else {"error":"Invalid data to create api key"}

@@ -1,9 +1,9 @@
-import psycopg
 from dotenv import load_dotenv
 from os import getenv, urandom
 from dto.user import UserDTO, APIKey
-from dto.logs import Log
 from pwdlib import PasswordHash
+from dto.logs import Log
+import psycopg
 import hashlib
 
 load_dotenv()
@@ -125,17 +125,20 @@ async def update_log(log: Log) -> bool | None:
     conn.commit()
     return True
 
-
 async def validate_api_key(key: str) -> dict | None:
     if not key:
         print("[!] - Invalid API Key")
         return
-
-    key_hash = hash_api_key(key)
-    cursor.execute("SELECT key_hash FROM ApiKeys WHERE key_hash=%s", (key_hash))
+    
+    cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s", [key])
     res = cursor.fetchone()
     
-    return {"api_key":res[0]} if res != None else None
+    try:
+        data = {"api_key":res}
+        return data
+    except TypeError as ex:
+        print("[!] - Invalid api key to access")
+        return 
 
 async def get_user_api_keys(user: UserDTO) -> str | None:
     if not user.username or not user.password:
