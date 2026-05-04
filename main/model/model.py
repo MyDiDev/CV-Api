@@ -86,9 +86,10 @@ Additional constraints:
 async def update_task_log(log_res):
   if log_res != None:
     res = await update_log(Log(id=log_res[0], status="done"))
-    if res: print("Log Updated Successfully")
-  print("[!]- Invalid log updated")
-  return
+    if res: 
+      print("Log Updated Successfully")
+  else:
+    print("[!]- Invalid log updated")
 
 async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
   if not content: raise Exception("Invalid CV document content to process")

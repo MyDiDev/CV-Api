@@ -10,11 +10,11 @@ from dto.user import UserDTO
 auth_router = APIRouter()
 
 @auth_router.post("/api/login")
-async def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    if not data.username or not data.password:
+async def login(data: Annotated[OAuth2PasswordRequestFormEmail, Depends()]):
+    if not (data.username or data.email) or not data.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
-    user = UserDTO(username=data.username, password=data.password)
+    user = UserDTO(username=data.username, email=data.email, password=data.password)
     res = await get_user(user)
     return {"access_authorized":True} if res != None else {"access_authorized":False, "error":"Invalid user"}
     
@@ -26,4 +26,5 @@ async def register(data: Annotated[OAuth2PasswordRequestFormEmail, Depends()]):
     
     user = UserDTO(username=data.username, password=data.password, email=data.email)
     res = await create_user(user)
-    return {"user_created":True} if res == True else {"error":"Error while creating user, try again and check body request"}
+    
+    return {"user_created":res} if res == True else {"error":"Error while creating user, try again and check body request"}
