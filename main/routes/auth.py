@@ -6,6 +6,7 @@ from fastapi.security.oauth2 import OAuth2PasswordRequestFormEmail
 from typing import Annotated
 from data.db import create_user, get_user
 from dto.user import UserDTO
+from services.tokenizer import create_token, decode_token
 
 auth_router = APIRouter()
 
@@ -16,7 +17,10 @@ async def login(data: Annotated[OAuth2PasswordRequestFormEmail, Depends()]):
     
     user = UserDTO(username=data.username, email=data.email, password=data.password)
     res = await get_user(user)
-    return {"access_authorized":True} if res != None else {"access_authorized":False, "error":"Invalid user"}
+    if res is None: raise HTTPException(status_code=400, detail="Invalid user found")
+    
+    token = create_token(res)
+    return {"access_token":token}
     
 
 @auth_router.post("/api/register")
@@ -26,5 +30,4 @@ async def register(data: Annotated[OAuth2PasswordRequestFormEmail, Depends()]):
     
     user = UserDTO(username=data.username, password=data.password, email=data.email)
     res = await create_user(user)
-    
-    return {"user_created":res} if res == True else {"error":"Error while creating user, try again and check body request"}
+    return {"created":res} if res else {"error":"try again and check request"}
