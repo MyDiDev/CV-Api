@@ -17,6 +17,7 @@ def create_token(payload: dict) -> str | None:
         return 
     payload["iat"] = datetime.datetime.now(tz=datetime.timezone.utc)
     payload["exp"] = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(minutes=EXPIRE_TIME)
+    print(payload, ALGORITHIM)
     return jwt.encode(payload, SECRET_KEY, ALGORITHIM)
 
 def decode_token(token: str) -> dict[str, Any] | dict[str, bool] | None:
