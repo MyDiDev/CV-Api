@@ -57,7 +57,7 @@ async def create_user(user: UserDTO) -> bool | None:
         return True
  
     user.password = hash_password(user.password)
-    cursor.execute("INSERT INTO Users(username, password_hash) VALUES (%s, %s, %s)", [user.username, user.password])    
+    cursor.execute("INSERT INTO Users(username, password_hash) VALUES (%s, %s)", [user.username, user.password])    
     conn.commit()
     return True
 
