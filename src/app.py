@@ -1,11 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.exceptions import HTTPException
-from datetime import datetime
 from routes.curriculum import curriculum_router
 from routes.user import user_router
 from routes.auth import auth_router
+from datetime import datetime
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, 
