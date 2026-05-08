@@ -46,21 +46,18 @@ def create_api_key() -> str:
 
 
 async def create_user(user: UserDTO) -> bool | None:
-    if not user.username or not user.password or not user.email:
+    if not user.username or not user.password:
         print("[!] - Credentials missing")
         return
  
-    if not user.email.endswith("@gmail.com") and not user.email.endswith("@hotmail.com"):
-        print("[!] Invalid email to register")
-        return
-    
+   
     created_user = await get_user(user)
     if created_user: 
         print("[!] - User already registered")
         return True
  
     user.password = hash_password(user.password)
-    cursor.execute("INSERT INTO Users(username, email, password_hash) VALUES (%s, %s, %s)", [user.username, user.email, user.password])    
+    cursor.execute("INSERT INTO Users(username, password_hash) VALUES (%s, %s, %s)", [user.username, user.password])    
     conn.commit()
     return True
 
@@ -85,14 +82,12 @@ async def update_user(user: UserDTO) -> bool | None:
     return True
 
 async def get_user(user: UserDTO) -> dict | None:
-    if not (user.username or user.email) or not user.password:
+    if not user.username or not user.password:
         print("[!] - Credentials missing to get user")
         return 
     
-    if not user.username:
-        cursor.execute("SELECT * FROM Users WHERE email=%s", [user.email])
-    else:
-        cursor.execute("SELECT * FROM Users WHERE username=%s", [user.username])
+    
+    cursor.execute("SELECT * FROM Users WHERE username=%s", [user.username])
     res = cursor.fetchone()
         
     if res == None:
