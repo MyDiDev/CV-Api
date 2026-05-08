@@ -25,3 +25,6 @@ async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     res = await save_api_key(user)
     
     return {"created": True, "api_key":res} if res != None else {"error":"Invalid data to create api key"}
+
+# create endpoints to resume data like api usage, counted tokens, logs history, etc... 
+# check every endpoint with token verification inside every endpoint request.
