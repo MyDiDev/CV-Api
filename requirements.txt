@@ -1,6 +1,6 @@
 fastapi[standard]
 PyJWT
-PwdLIB
+pwdlib[argon2]
 google-genai
 google-generativeai
 psycopg
