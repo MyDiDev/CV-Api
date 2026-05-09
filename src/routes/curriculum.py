@@ -22,6 +22,8 @@ async def get_api_key(
     
     return res.get("api_key")
 
+# add cloudflare CDN to save documents and responses
+
 @curriculum_router.post("/api/curriculum", tags=["curriculums"],
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 15))))]
 )
@@ -33,7 +35,7 @@ async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
         raise HTTPException(status_code=400, detail="Invalid API key")
     
     api_key = APIKey(id=api_key[0])
-    res = await evaluate_cv_document(data["content"], api_key)
+    res = await evaluate_cv_document(data.get("content", ""), api_key)
     if res is not None:
         return res if res.get("error") else {"result":res}
     

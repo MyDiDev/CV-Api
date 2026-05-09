@@ -27,7 +27,6 @@ async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     
     return {"created": True, "api_key":res} if res != None else {"error":"Invalid data to create api key"}
 
-# create endpoints to resume data like api usage, counted tokens, logs history, etc... 
 @user_router.get("/api/dashboard")
 async def get_api_dashboard_info(token=Depends(get_token)):        
     user = UserDTO(username=token.get("username", None), password=token.get("password", None))
@@ -39,5 +38,3 @@ async def get_api_dashboard_info(token=Depends(get_token)):
         raise HTTPException(status_code=400, detail="No API key found")
     
     return res
-
-# check every endpoint with token verification inside every endpoint request.
