@@ -3,6 +3,7 @@ from os import getenv, urandom
 from dto.user import UserDTO, APIKey
 from pwdlib import PasswordHash
 from dto.logs import Log
+from typing import Any
 import psycopg
 import hashlib
 
@@ -127,7 +128,7 @@ async def update_log(log: Log) -> bool | None:
     conn.commit()
     return True
 
-async def validate_api_key(key: str) -> dict | None:
+async def validate_api_key(key: str) -> dict[str, tuple | Any] | None:
     if not key:
         print("[!] - Invalid API Key")
         return
@@ -142,7 +143,7 @@ async def validate_api_key(key: str) -> dict | None:
         print("[!] - Invalid api key to access")
         return 
 
-async def get_user_api_keys(user: UserDTO) -> str | None:
+async def get_user_api_key(user: UserDTO) -> str | None:
     if not user.username or not user.password:
         print("[!] - Invalid credentials from user to create api key")
         return  
@@ -168,7 +169,7 @@ async def save_api_key(user: UserDTO) -> tuple | str | None:
         print("[!] - Invalid user to create api key")
         return  
     
-    user_api_key = await get_user_api_keys(user)
+    user_api_key = await get_user_api_key(user)
     if user_api_key != None and len(user_api_key) > 0:
         print("[!] - API key already created on this user")
         return user_api_key
@@ -192,3 +193,23 @@ async def remove_api_key(key: APIKey) -> bool | None:
     conn.commit()
     return True
 
+async def get_api_information(user: UserDTO) -> dict | None:
+    if not user.username or not user.password:
+        print("[!] - Invalid user found to get dashboard data")
+        return
+    
+    key = await get_user_api_key(user)
+    if not key:
+        print("[!] - Invalid API key to get information")
+        return
+    
+    api_key_data = await validate_api_key(key)
+    if not api_key_data or not api_key_data.get("api_key") or len(api_key_data.get("api_key")) == 0:
+        print("[!] - Invalid API information")
+        return
+    
+    cursor.execute("SELECT tokens_used, status, response_time FROM  apilogusage WHERE api_key_id = %s", [api_key_data.get("api_key")[0]])
+    logs_information = cursor.fetchall()
+
+    return {"data":logs_information}
+    

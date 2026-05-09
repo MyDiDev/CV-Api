@@ -19,4 +19,5 @@ app.include_router(user_router)
 
 @app.get("/")
 async def get_health() -> dict:
-    return {"up": True, "datetime": datetime.now()}
+    return {"up": True, 
+            "datetime": datetime.now()}

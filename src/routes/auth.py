@@ -7,7 +7,6 @@ from data.db import create_user, get_user
 from dto.user import UserDTO
 from services.tokenizer import create_token, decode_token
 
-
 auth_router = APIRouter()
 
 @auth_router.post("/api/login")
@@ -30,4 +29,5 @@ async def register(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     
     user = UserDTO(username=data.username, password=data.password)
     res = await create_user(user)
+    
     return {"created":res} if res else {"error":"try again and check request"}

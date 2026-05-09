@@ -1,9 +1,9 @@
 from google import genai
 from google.api_core.exceptions import ServiceUnavailable
-from dotenv import load_dotenv
 from data.db import register_log, update_log
-from dto.logs import Log
+from dotenv import load_dotenv
 from dto.user import APIKey
+from dto.logs import Log
 import time
 import json
 import os
@@ -114,16 +114,16 @@ Evalutate this CV:
     response = client.models.generate_content(
       model="gemini-2.5-flash",
       contents={"text":f"""
-      {MODEL_ROLE}
-      
-      Evalutate this CV:
-      
-      {content}          
-      """},
-      config={
-        "temperature":0.2,
-        "response_mime_type":"application/json"
-      }
+{MODEL_ROLE}
+
+Evalutate this CV:
+
+{content}          
+"""},
+    config={
+      "temperature":0.2,
+      "response_mime_type":"application/json"
+          }
     )
     end = time.time()
     

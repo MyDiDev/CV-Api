@@ -5,6 +5,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from model.model import evaluate_cv_document
 from data.db import validate_api_key
 from dto.user import APIKey
+from pyrate_limiter import Duration, Limiter, Rate
+from fastapi_limiter.depends import RateLimiter
 
 security = HTTPBearer()
 curriculum_router = APIRouter()
@@ -20,7 +22,9 @@ async def get_api_key(
     
     return res.get("api_key")
 
-@curriculum_router.post("/api/curriculum", tags=["curriculums"])
+@curriculum_router.post("/api/curriculum", tags=["curriculums"],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 15))))]
+)
 async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
     if not data["content"] or len(data["content"]) == 0:
         raise HTTPException(status_code=400, detail="Invalid document data to process")
