@@ -36,6 +36,8 @@ async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
     api_key = APIKey(id=api_key[0])
     res = await evaluate_cv_document(data.get("content", ""), api_key)
     if res is not None:
-        return res if res.get("error") else {"result":res}
+        if res.get("error"):
+            raise HTTPException(status_code=501, detail=res)
+        return {"result":res}
     
     raise HTTPException(status_code=500, detail="Error while processing CV and analysing the document, please check body and authorization headers")

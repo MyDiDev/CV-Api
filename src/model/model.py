@@ -220,10 +220,11 @@ Evalutate this CV:
     return data
   
   except ServiceUnavailable as ex:
-    print("[!] - Serveres ar overloaded, try again later")
+    print("[!] - Model servers are overloaded, try again later")
     return {"error":ex}
   
   except Exception as ex:
     print("[!] - Exception while evaluating CV")
+    print(ex)
     return {"error":ex}
     
