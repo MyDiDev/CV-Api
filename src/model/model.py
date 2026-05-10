@@ -4,88 +4,92 @@ from data.db import register_log, update_log
 from dotenv import load_dotenv
 from dto.user import APIKey
 from dto.logs import Log
-import time
-import json
-import os
+from markdown_pdf import MarkdownPdf, Section
+import time, json, os, io
+from services.cdn import save_document
 
 load_dotenv()
 MODEL_ROLE = """"
-You are an expert HR analyst and CV evaluator.
+You are an expert HR analyst and CV evaluator. Read CVs and return ONE valid JSON object.
 
-Your task is to read and understand curriculum vitae (CV) documents submitted by users and return a structured evaluation in JSON format.
+## YOUR TASK
+1. Extract CV information
+2. Evaluate against professional hiring criteria
+3. Score each criterion 0–100 (strict but fair, like a real recruiter)
+4. Provide actionable suggestions
+5. Generate a Markdown report in the `document.content` field
 
-You must:
-1. Extract relevant information from the CV.
-2. Evaluate the CV based on professional hiring criteria.
-3. Assign a global score from 0 to 100.
-4. Provide detailed evaluation by criteria.
-5. Suggest actionable improvements.
+## EVALUATION CRITERIA
+- structure_and_quality — clarity and organization
+- relevant_experience — depth and relevance of work history
+- formation_and_education — academic and professional training
+- habilities — technical and soft skills
+- goals_and_impact — achievements, metrics, and impact
+- adaption_for_position — fit for role (if job context provided; else evaluate general employability)
 
-Evaluation criteria must include:
-- structure_and_quality (clarity and organization)
-- relevant_experience (relevant experience)
-- formation_and_education (education and training)
-- habilities (skills)
-- goals_and_impact (achievements and impact)
-- adaption_for_position (fit for job, if job context is provided)
+## SCORING RULES
+- Each criterion: 0–100
+- global_score: balanced/weighted average of all criteria
+- Missing info → lower score + explanation in comment
+- Do NOT hallucinate experience or skills not present in the CV
 
-Scoring rules:
-- Each criterion must have a score from 0 to 100.
-- The global score must be a weighted or balanced summary of all criteria.
-- Be strict but fair, like a real recruiter.
-- Return in the CV the information text of each in the respective input language
+## DOCUMENT FIELD (MARKDOWN REPORT)
+The `document.content` must be a complete Markdown report containing:
+- Candidate Information
+- Extracted CV Content (in the CV's original language)
+- Professional Experience Summary
+- Education and Training
+- Skills and Abilities
+- Achievements and Impact
+- Evaluation by Criterion ← use plain section headings like "Structure & Quality", NOT the JSON key names (no snake_case, no bracketed labels)
+- Final Overall Evaluation
+- Recommendation
 
-Suggestions:
-- Must be specific, actionable, and concise.
-- Focus on improving content, structure, and impact.
+## STRICT MARKDOWN RULES:
+- Never write JSON key names (e.g. `structure_and_quality`, `relevant_experience`) anywhere in the document
+- Use human-readable headings only (e.g. "## Structure & Quality", "## Relevant Experience")
+- Do not repeat content from other sections
+- Preserve original language of CV content
 
-Output rules:
-- Always return ONLY valid JSON.
-- Do not include explanations outside JSON.
-- Do not include markdown formatting.
+## OUTPUT RULES (NON-NEGOTIABLE)
+- Return exactly ONE valid JSON object, nothing else
+- No text before or after the JSON
+- No duplicated keys
+- No truncated strings — complete all fields fully
+- Properly escape quotes (\") and newlines (\n) inside strings
+- No null fields unless info is truly unavailable
+- Must be parseable by standard json.loads()
 
-JSON structure:
-
+## JSON STRUCTURE
 {
   "global_score": number,
   "evaluation": {
-    "structure_and_quality": {
-      "score": number,
-      "comment": string
-    },
-    "relevant_experience": {
-      "score": number,
-      "comment": string
-    },
-    "formation_and_education": {
-      "score": number,
-      "comment": string
-    },
-    "habilities": {
-      "score": number,
-      "comment": string
-    },
-    "goals_and_impact": {
-      "score": number,
-      "comment": string
-    },
-    "adaption_for_position": {
-      "score": number,
-      "comment": string
-    }
+    "structure_and_quality": { "score": number, "comment": string },
+    "relevant_experience":   { "score": number, "comment": string },
+    "formation_and_education": { "score": number, "comment": string },
+    "habilities":            { "score": number, "comment": string },
+    "goals_and_impact":      { "score": number, "comment": string },
+    "adaption_for_position": { "score": number, "comment": string }
   },
-  "suggestions": [
-    string,
-    string,
-    string
-  ]
-}
+  "suggestions": [string, string, string],
+  "document": {
+    "file_name": string,
+    "content": string
+  }
+}"""
 
-Additional constraints:
-- If information is missing, reflect it in the score and explain it in the comment.
-- Do not hallucinate experience or skills not present in the CV.
-- Keep language professional and neutral."""
-
+async def create_and_save_document(file_name: str, document_content: str, api_key_id: int | None):
+  pdf = MarkdownPdf()
+  pdf.add_section(Section(document_content, paper_size="A4"))
+  
+  buf = io.BytesIO()
+  pdf.save_bytes(buf)
+  buf.seek(0)
+  
+  res = await save_document(file_name, buf, api_key_id)
+  if res == True:
+    print("[+] - Document saved successfully")
+  
 async def update_task_log(log_res):
   if log_res != None:
     res = await update_log(Log(id=log_res[0], status="done", response_time=int(end-start)))
@@ -100,6 +104,7 @@ async def evaluate_cv_document(content: str, api_key: APIKey) -> dict | None:
   
   start = time.time()
   client = genai.Client(api_key=os.getenv("API_KEY"))
+  
   try:
     tokens_count = client.models.count_tokens(model="gemini-2.5-flash",
       contents={"text":f"""
@@ -122,26 +127,40 @@ Evalutate this CV:
 
 {content}          
 """},
-    config={
-      "temperature":0.2,
-      "response_mime_type":"application/json"
-          }
+      config={
+        "temperature":0.2,
+        "response_mime_type":"application/json"
+      }
     )
     end = time.time()
-    
     res_txt = str(response.text).strip() if response else None 
+    
     if not res_txt:
       print("[!] - Invalid response error")
       await update_task_log(log_res)
       return {"error": "Invalid response or JSON from model", "raw":res_txt}
-    if res_txt.startswith("```"): res_txt.replace("```", "")
+
+    if res_txt.startswith("```") or res_txt.endswith("```"): res_txt.replace("```", "")
     
     await update_task_log(log_res)
+    data = json.loads(res_txt)
     
-    return json.loads(res_txt)    
+    document = data.get("document")
+    if not document:
+      print("[!] - Invalid document to save, check model response")
+      print(data)
+      return
+    
+    await create_and_save_document(document["file_name"], document["content"], api_key.id)
+    
+    data.pop("document")
+    return data
+  
   except ServiceUnavailable as ex:
     print("[!] - Serveres ar overloaded, try again later")
     return {"error":ex}
+  
   except Exception as ex:
     print("[!] - Exception while evaluating CV")
-    return
+    return {"error":ex}
+    

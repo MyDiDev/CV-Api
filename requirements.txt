@@ -6,3 +6,5 @@ google-generativeai
 psycopg
 psycopg[binary]
 fastapi-limiter
+markdown-pdf
+cloudinary

@@ -22,7 +22,6 @@ async def get_api_key(
     
     return res.get("api_key")
 
-# add cloudflare CDN to save documents and responses
 
 @curriculum_router.post("/api/curriculum", tags=["curriculums"],
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 15))))]

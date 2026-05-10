@@ -212,4 +212,14 @@ async def get_api_information(user: UserDTO) -> dict | None:
     logs_information = cursor.fetchall()
 
     return {"data":logs_information}
+
+async def save_doc_url(url: str, api_key_id: int | None) -> bool | None:
+    if not url or not api_key_id:
+        print("[!] - Information missing to save document url")
+        return
+
+    cursor.execute("INSERT INTO documents(api_key_id, file_url) VALUES (%s, %s)", [api_key_id, url])
+    conn.commit()
     
+    print("[+] - Document url saved successfully")
+    return True
