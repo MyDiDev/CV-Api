@@ -7,4 +7,4 @@ class Log(BaseModel):
     request_timestamp: datetime | None = None
     tokens_used: int | None = None
     status: str | None = None
-    response_time: int | None = None
+    response_time: float | None = None

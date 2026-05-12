@@ -2,7 +2,7 @@ from fastapi import Depends
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from model.model import evaluate_cv_document
+from model.model import evaluate_cv_document, generate_quiz
 from data.db import validate_api_key
 from dto.user import APIKey
 from pyrate_limiter import Duration, Limiter, Rate
@@ -22,6 +22,20 @@ async def get_api_key(
     
     return res.get("api_key")
 
+@curriculum_router.post("/api/curriculum/quiz", tags=["curriculums"],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 2))))]                    
+)
+async def generate_quizziz(data: dict, api_key=Depends(get_api_key)):
+    if not data or not data.get("content"):
+        print(data)
+        raise HTTPException(status_code=400, detail="Invalid user information")
+    
+    if not api_key or len(api_key) == 0:
+        raise HTTPException(status_code=400, detail="Invalid API key")
+    
+    api_key = APIKey(id=api_key[0])
+    res = await generate_quiz(str(data.get("content", "")), api_key)
+    return {"result":res}
 
 @curriculum_router.post("/api/curriculum", tags=["curriculums"],
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 15))))]
@@ -35,9 +49,7 @@ async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
     
     api_key = APIKey(id=api_key[0])
     res = await evaluate_cv_document(data.get("content", ""), api_key)
-    if res is not None:
-        if res.get("error"):
-            raise HTTPException(status_code=501, detail=res)
-        return {"result":res}
-    
-    raise HTTPException(status_code=500, detail="Error while processing CV and analysing the document, please check body and authorization headers")
+
+    if res.get("error"):
+        raise HTTPException(status_code=501, detail=res)
+    return {"result":res}
