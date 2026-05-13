@@ -120,7 +120,7 @@ Evalutate this CV:
     print(ex)
     return {"error":ex}
     
-async def generate_quiz(data: str, api_key: APIKey) -> dict[str, str | None | dict | Exception]:
+async def generate_quiz(data: str, api_key: APIKey, requirements: str) -> dict[str, str | None | dict | Exception]:
   if not api_key or not api_key.id:
     print("Invalid API key to generate quiz")
     return {"error":"Invalid API key to generate quiz"}
@@ -128,12 +128,14 @@ async def generate_quiz(data: str, api_key: APIKey) -> dict[str, str | None | di
   try:
     start = time.time()
     
+    company_requirements = f"\n\nCOMPANY REQUIREMENTS: \n{requirements}" if requirements else ""
+    
     content = f"""
 {MODEL_QUIZ_ROLE}
 
 Generate a quiz for a person, which information is:
 
-{data}  
+{data}{company_requirements}  
     """
     tokens_count = count_tokens(content)
     
@@ -148,7 +150,7 @@ Generate a quiz for a person, which information is:
 
 Generate a quiz for a person, which information is this:
 
-{data}
+{data}{company_requirements}
 """,
       },
       config={

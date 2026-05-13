@@ -25,7 +25,6 @@ async def get_token(
     
     return res
 
-
 def create_token(payload: dict) -> str | None:
     if not SECRET_KEY or not ALGORITHIM or not EXPIRE_TIME:
         print("[!] - Invalid JWT enviroment variables")
