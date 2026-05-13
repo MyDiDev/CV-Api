@@ -3,7 +3,7 @@ from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from model.model import evaluate_cv_document, generate_quiz
-from data.db import validate_api_key
+from data.db import validate_api_key, get_documents
 from dto.user import APIKey
 from pyrate_limiter import Duration, Limiter, Rate
 from fastapi_limiter.depends import RateLimiter
@@ -52,4 +52,16 @@ async def evaluate_curriculum(data: dict, api_key=Depends(get_api_key)):
 
     if res.get("error"):
         raise HTTPException(status_code=501, detail=res)
+    return {"result":res}
+
+@curriculum_router.get("/api/curriculum/documents", tags=["curriculums"], 
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))]                       
+)
+async def get_user_documents(api_key=Depends(get_api_key)):
+    if not api_key or len(api_key) == 0:
+        raise HTTPException(status_code=400, detail="Invalid API key")
+    
+    res = await get_documents(api_key[0])
+    if not res:
+        raise HTTPException(status_code=400, detail="Invalid documents to fetch")
     return {"result":res}

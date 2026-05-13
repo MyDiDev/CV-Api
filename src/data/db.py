@@ -227,3 +227,15 @@ async def save_doc_url(url: str, api_key_id: int | None) -> bool | None:
         conn.commit()    
     print("[+] - Document url saved successfully")
     return True
+
+async def get_documents(api_key_id: int | None) -> dict[str, list | None] | None:
+    if not api_key_id:
+        print("[!] - Invalid API key to get documents")
+        return
+    
+    with get_db() as (conn, cursor):
+        cursor.execute("SELECT file_url FROM documents WHERE api_key_id = %s", [api_key_id])
+        res = cursor.fetchall()
+    return {
+        "documents": res
+    }
