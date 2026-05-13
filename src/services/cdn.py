@@ -6,7 +6,7 @@ import io
 
 load_dotenv()
 
-async def save_document(file_name: str, bytes: io.BytesIO, key_id: int | None) -> bool | None:
+async def save_document(file_name: str, bytes: io.BytesIO, key_id: int | None) -> dict[str, bool | None | str] | None:
     if not bytes:
         print("[!] - Invalid file bytes to save into CDN")
         return
@@ -18,4 +18,7 @@ async def save_document(file_name: str, bytes: io.BytesIO, key_id: int | None) -
     )
     
     res = await save_doc_url(response["url"], key_id)
-    return res
+    return {
+        "res": res,
+        "url":response.get("url")
+    }

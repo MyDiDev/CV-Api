@@ -13,13 +13,11 @@ MODEL = os.getenv("MODEL") or "gemini-2.5-flash"
 
 def load_model_roles():
   global MODEL_ROLE, MODEL_QUIZ_ROLE
-  BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-  
-  with open(os.path.join(BASE_DIR, "..", "role.md"), "r") as f: 
+  with open("role.md", "r") as f: 
     MODEL_ROLE = f.read()
     print("[+] - Model role loaded successfully")
     
-  with open(os.path.join(BASE_DIR, "..", "quiz_role.md"), "r") as f:
+  with open("quiz_role.md", "r") as f:
     MODEL_QUIZ_ROLE = f.read()
     print("[+] - Model quiz role loaded successfully")
 
@@ -40,9 +38,10 @@ async def create_and_save_document(file_name: str, document_content: str, api_ke
   pdf.save_bytes(buf)
   buf.seek(0)
   
-  res = await save_document(file_name, buf, api_key_id)
-  if res == True:
+  res: dict | None = await save_document(file_name, buf, api_key_id)
+  if res is not None and res.get("res") ==  True:
     print("[+] - Document saved successfully")
+    return res.get("url")
   
 async def update_task_log(log_res, response_time: float):
   if log_res != None:
@@ -105,9 +104,9 @@ Evalutate this CV:
       print(data)
       return {"error":"couldn't save PDF report"}
     
-    await create_and_save_document(document["file_name"], document["content"], api_key.id)
+    res = await create_and_save_document(document["file_name"], document["content"], api_key.id)
     
-    data.pop("document")
+    data["document"] = res
     return data
   
   except ServiceUnavailable as ex:

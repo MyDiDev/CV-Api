@@ -26,7 +26,7 @@ async def get_api_key(
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 2))))]                    
 )
 async def generate_quizziz(data: dict, api_key=Depends(get_api_key)):
-    if not data or not data.get("content"):
+    if not data or not data.get("content") or not data.get("requirements"):
         print(data)
         raise HTTPException(status_code=400, detail="Invalid user information")
     
@@ -34,7 +34,7 @@ async def generate_quizziz(data: dict, api_key=Depends(get_api_key)):
         raise HTTPException(status_code=400, detail="Invalid API key")
     
     api_key = APIKey(id=api_key[0])
-    res = await generate_quiz(str(data.get("content", "")), api_key)
+    res = await generate_quiz(str(data.get("content", "")), api_key, str(data.get("requirements", "")))
     return {"result":res}
 
 @curriculum_router.post("/api/curriculum", tags=["curriculums"],
