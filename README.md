@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Descripción General
+## Descripción General
 
 **CV-Api** es una REST API construida con FastAPI (Python) que evalúa currículums vitae utilizando el modelo de IA **Gemini 2.5 Flash** de Google, genera reportes PDF almacenados en **Cloudinary**, y produce **quizzes de perfil profesional** adaptados tanto al candidato como a los requerimientos de una empresa.
 
@@ -10,7 +10,7 @@ La API gestiona usuarios, autenticación mediante JWT, API Keys propias como cre
 
 ---
 
-## 2. Stack Tecnológico
+## Stack Tecnológico
 
 | Tecnología | Versión | Rol en el proyecto |
 |---|---|---|
@@ -29,7 +29,7 @@ La API gestiona usuarios, autenticación mediante JWT, API Keys propias como cre
 
 ---
 
-## 3. Arquitectura del Proyecto
+## Arquitectura del Proyecto
 
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
@@ -41,7 +41,7 @@ La API gestiona usuarios, autenticación mediante JWT, API Keys propias como cre
 | Prompts del modelo | `role.md`, `quiz_role.md` | System prompts cargados en startup |
 | Entry point | `src/app.py` | Instancia FastAPI, CORS, routers |
 
-### 3.1 Estructura de directorios
+### Estructura de directorios
 
 ```
 CV-Api/
@@ -70,9 +70,9 @@ CV-Api/
 
 ---
 
-## 4. Endpoints de la API
+## Endpoints de la API
 
-### 4.1 Health Check
+### Health Check
 
 | Campo | Detalle |
 |---|---|
@@ -83,7 +83,7 @@ CV-Api/
 
 ---
 
-### 4.2 Registro de usuario
+### Registro de usuario
 
 | Campo | Detalle |
 |---|---|
@@ -96,7 +96,7 @@ CV-Api/
 
 ---
 
-### 4.3 Login
+### Login
 
 | Campo | Detalle |
 |---|---|
@@ -109,7 +109,7 @@ CV-Api/
 
 ---
 
-### 4.4 Obtener API Key
+### Obtener API Key
 
 | Campo | Detalle |
 |---|---|
@@ -120,7 +120,7 @@ CV-Api/
 
 ---
 
-### 4.5 Crear API Key
+### Crear API Key
 
 | Campo | Detalle |
 |---|---|
@@ -133,7 +133,7 @@ CV-Api/
 
 ---
 
-### 4.6 Dashboard de uso
+### Dashboard de uso
 
 | Campo | Detalle |
 |---|---|
@@ -145,7 +145,7 @@ CV-Api/
 
 ---
 
-### 4.7 Evaluar CV
+### Evaluar CV
 
 | Campo | Detalle |
 |---|---|
@@ -160,7 +160,7 @@ CV-Api/
 
 ---
 
-### 4.8 Generar Quiz de perfil profesional ⭐
+### Generar Quiz de perfil profesional
 
 | Campo | Detalle |
 |---|---|
@@ -175,7 +175,7 @@ CV-Api/
 
 ---
 
-### 4.9 Obtener documentos generados
+### Obtener documentos generados
 
 | Campo | Detalle |
 |---|---|
@@ -191,7 +191,7 @@ CV-Api/
 
 ## 5. Estructura de las Respuestas de IA
 
-### 5.1 Evaluación de CV (`/api/curriculum`)
+### Evaluación de CV (`/api/curriculum`)
 
 El modelo recibe `role.md` como system prompt y retorna:
 
@@ -218,7 +218,7 @@ El modelo recibe `role.md` como system prompt y retorna:
 
 ---
 
-### 5.2 Quiz de perfil profesional (`/api/curriculum/quiz`)
+### Quiz de perfil profesional (`/api/curriculum/quiz`)
 
 El modelo recibe `quiz_role.md` y genera hasta **3 secciones**:
 
@@ -272,93 +272,8 @@ El modelo recibe `quiz_role.md` y genera hasta **3 secciones**:
 
 ---
 
-## 6. Modelos de Datos (DTOs)
 
-### 6.1 UserDTO
-
-```python
-class UserDTO(BaseModel):
-    id: int | None = None
-    username: str | None = None
-    email: str | None = None
-    password: str | None = None
-    role: str | None = None
-    dateRegistered: str | None = None
-```
-
-### 6.2 APIKey
-
-```python
-class APIKey(BaseModel):
-    id: int | None = None
-    owner_id: int | None = None
-    key_hash: str | None = None
-    rate_limit: int | None = None
-    usage_count: int | None = None
-    created_at: datetime | None = None
-```
-
-### 6.3 Log
-
-```python
-class Log(BaseModel):
-    id: int | None = None
-    api_key_id: int | None = None
-    request_timestamp: datetime | None = None
-    tokens_used: int | None = None
-    status: str | None = None
-    response_time: int | None = None
-```
-
-### 6.4 CVDTO
-
-```python
-class CVDTO(BaseModel):
-    id: int
-    title: str | None = None
-    content: str | None = None
-    grade: float | None = None
-    feedback: str | None = None
-    state: str | None = None
-    date: str | None = None
-```
-
----
-
-## 7. Esquema de Base de Datos
-
-Inferido del código en `db.py`:
-
-| Tabla | Columnas principales |
-|---|---|
-| `Users` | `user_id`, `username`, `password_hash`, `role` |
-| `ApiKeys` | `key_id`, `owner_id`, `key_hash`, `usage_count`, `rate_limit` |
-| `apilogusage` | `log_id`, `api_key_id`, `tokens_used`, `response_time`, `status` |
-| `documents` | `api_key_id`, `file_url` |
-
----
-
-## 8. Configuración y Variables de Entorno
-
-El archivo `.env` debe estar en `src/`:
-
-```env
-POSTGRES_CONNECTION_STRING=postgresql://user:pass@localhost:5432/cvapi
-API_KEY=AIza...                  # Google Generative AI API Key
-SECRET_KEY=mi_clave_secreta      # Clave secreta para firmar JWT
-ALGORITHIM=HS256                 # Algoritmo JWT (mantener typo)
-EXPIRE_TIME=60                   # Expiración del JWT en minutos
-MODEL=gemini-2.5-flash           # Modelo Gemini a usar
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=...
-CLOUDINARY_API_KEY=...
-CLOUDINARY_API_SECRET=...
-```
-
----
-
-## 9. Flujo Interno: Evaluación de CV
+## Flujo Interno: Evaluación de CV
 
 ```
 POST /api/curriculum  (Bearer <API_KEY>)
@@ -384,7 +299,7 @@ evaluate_cv_document()
 
 ---
 
-## 10. Flujo Interno: Quiz
+## Flujo Interno: Quiz
 
 ```
 POST /api/curriculum/quiz  (Bearer <API_KEY>)
@@ -407,68 +322,7 @@ generate_quiz()
 
 ---
 
-## 11. Seguridad
-
-### Contraseñas
-- Almacenadas con hashing **Argon2** via `pwdlib`.
-- Verificación con `password_hash.verify()`.
-
-### JWT
-- Firmado con `SECRET_KEY` y algoritmo `ALGORITHIM` (configurable).
-- Incluye `iat` y `exp` automáticamente.
-- Decodificado por `get_token()` en cada endpoint protegido con Bearer JWT.
-
-### API Keys
-- Generadas como hash SHA-256 de `os.urandom(32)`.
-- Se almacena el hash directamente en `ApiKeys.key_hash`.
-- Validadas en cada request a `/api/curriculum*` via `get_api_key()`.
-
-### Rate Limiting
-| Endpoint | Límite |
-|---|---|
-| `POST /api/curriculum` | 20 req / 15 minutos |
-| `POST /api/curriculum/quiz` | 5 req / 2 minutos |
-| `GET /api/curriculum/documents` | 5 req / 5 minutos |
-
-### CORS
-- `allow_origins=["*"]` — **restringir en producción**.
-
----
-
-## 12. Conexión a Base de Datos
-
-La conexión usa un **context manager** `get_db()` que abre y cierra la conexión por cada operación, compatible con entornos serverless como Vercel:
-
-```python
-@contextmanager
-def get_db():
-    conn = psycopg.connect(getenv("POSTGRES_CONNECTION_STRING"))
-    cursor = conn.cursor()
-    try:
-        yield conn, cursor
-        conn.commit()
-    finally:
-        cursor.close()
-        conn.close()
-```
-
----
-
-## 13. Observaciones y Bugs Identificados
-
-| # | Archivo | Descripción |
-|---|---|---|
-| 1 | `db.py` | `remove_user` tiene typo `ownter_id` en lugar de `owner_id` en el DELETE de ApiKeys. |
-| 2 | `db.py` | `remove_api_key` usa `hash_key` en la query pero la columna correcta es `key_hash`. |
-| 3 | `db.py` | `update_user` usa la columna `password` en el UPDATE, pero el INSERT usa `password_hash`. |
-| 4 | `db.py` | `get_api_information` tiene lógica invertida: retorna `None` cuando `api_key_data != None`, lo que impide que el dashboard funcione. La condición debería ser `if not api_key_data`. |
-| 5 | `model/model.py` | `res_txt.replace("```", "")` no modifica la variable (strings son inmutables). Debe ser `res_txt = res_txt.replace(...)`. |
-| 6 | `routes/curriculum.py` | `generate_quizziz` lanza HTTP 400 si `requirements` no está presente, pero debería ser opcional. |
-| 7 | `services/tokenizer.py` | Typo `ALGORITHIM` en lugar de `ALGORITHM`. Mantener consistente con `.env`. |
-
----
-
-## 14. Flujo de Uso Típico
+## Flujo de Uso Típico
 
 | Paso | Acción | Endpoint |
 |---|---|---|
