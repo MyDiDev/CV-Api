@@ -13,12 +13,13 @@ MODEL = os.getenv("MODEL") or "gemini-2.5-flash"
 
 def load_model_roles():
   global MODEL_ROLE, MODEL_QUIZ_ROLE
+  BASE_DIR = os.path.dirname(os.path.abspath(__file__))
   
-  with open("role.md", "r") as f: 
+  with open(os.path.join(BASE_DIR, "..", "role.md"), "r") as f: 
     MODEL_ROLE = f.read()
     print("[+] - Model role loaded successfully")
     
-  with open("quiz_role.md", "r") as f:
+  with open(os.path.join(BASE_DIR, "..", "quiz_role.md"), "r") as f:
     MODEL_QUIZ_ROLE = f.read()
     print("[+] - Model quiz role loaded successfully")
 
