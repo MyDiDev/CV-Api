@@ -201,7 +201,7 @@ async def get_api_information(user: UserDTO) -> dict | None:
         return
     
     api_key_data = await validate_api_key(key)
-    if api_key_data != None or type(api_key_data) != dict or not api_key_data.get("api_key") or len(api_key_data.get("api_key")) == 0:
+    if api_key_data == None or type(api_key_data) != dict or not api_key_data.get("api_key") or len(api_key_data.get("api_key")) == 0:
         print("[!] - Invalid API information")
         return
     

@@ -9,7 +9,7 @@ from dto.user import UserDTO
 
 user_router = APIRouter()
 
-@user_router.get("/api/key")
+@user_router.post("/api/key")
 async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     if not data.username or not data.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
@@ -17,7 +17,7 @@ async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     api_keys = await get_user_api_key(UserDTO(username=data.username, password=data.password))
     return {"api_key":api_keys}
 
-@user_router.post("/api/key")
+@user_router.post("/api/create/key")
 async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     if not data.username or not data.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
