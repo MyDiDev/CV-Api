@@ -55,7 +55,6 @@ async def create_user(user: UserDTO) -> bool | None:
     user.password = hash_password(user.password)
     with get_db() as (conn, cursor):
         cursor.execute("INSERT INTO Users(username, password_hash) VALUES (%s, %s)", [user.username, user.password])    
-        conn.commit()
     return True
 
 async def remove_user(user: UserDTO) -> bool | None:
@@ -66,7 +65,6 @@ async def remove_user(user: UserDTO) -> bool | None:
     with get_db() as (conn, cursor):
         cursor.execute("DELETE FROM ApiKeys where ownter_id=%s", [user.id])
         cursor.execute("DELETE FROM Users WHERE user_id=%s", [user.id])
-        conn.commit()
     return True
     
 async def update_user(user: UserDTO) -> bool | None:
@@ -78,7 +76,6 @@ async def update_user(user: UserDTO) -> bool | None:
     
     with get_db() as (conn, cursor):
         cursor.execute("UPDATE Users SET username=%s, password=%s, role=%s WHERE user_id=%s", [user.username, user.password, user.role, user.id]) 
-        conn.commit()
     return True
 
 async def get_user(user: UserDTO) -> dict | None:
@@ -116,7 +113,6 @@ async def register_log(log: Log) -> dict | None:
         cursor.execute("SELECT * FROM apilogusage")
         res = cursor.fetchall()[-1]
         
-        conn.commit()
     return {"log": res}
 
 async def update_log(log: Log) -> bool | None:
@@ -126,7 +122,6 @@ async def update_log(log: Log) -> bool | None:
     
     with get_db() as (conn, cursor):    
         cursor.execute("UPDATE apilogusage SET status = %s, response_time = %s WHERE log_id = %s", [log.status, log.response_time, log.id])
-        conn.commit()
         return True
 
 async def validate_api_key(key: str) -> dict[str, tuple | Any] | None:
@@ -184,7 +179,6 @@ async def save_api_key(user: UserDTO) -> tuple | str | None:
         cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s", [api_key.key_hash])
         res = cursor.fetchone()
 
-        conn.commit()
     return res[2] if res != None else None 
 
 async def remove_api_key(key: APIKey) -> bool | None:
@@ -194,7 +188,6 @@ async def remove_api_key(key: APIKey) -> bool | None:
     
     with get_db() as (conn, cursor):
         cursor.execute("DELETE FROM ApiKeys WHERE owner_id = %s and hash_key = %s", [key.owner_id, key.key_hash])
-        conn.commit()
     return True
 
 async def get_api_information(user: UserDTO) -> dict | None:
@@ -223,8 +216,7 @@ async def save_doc_url(url: str, api_key_id: int | None) -> bool | None:
         return
 
     with get_db() as (conn, cursor):
-        cursor.execute("INSERT INTO documents(api_key_id, file_url) VALUES (%s, %s)", [api_key_id, url])
-        conn.commit()    
+        cursor.execute("INSERT INTO documents(api_key_id, file_url) VALUES (%s, %s)", [api_key_id, url])    
     print("[+] - Document url saved successfully")
     return True
 
