@@ -39,7 +39,6 @@ def decode_token(token: str) -> dict[str, Any] | dict[str, bool] | None:
             print("[!] - Invalid JWT enviroment variables")
             return
         decode = jwt.decode(token, SECRET_KEY, [ALGORITHIM])
-        print(decode)
         return decode
     except InvalidTokenError:
         return {"expired":True}

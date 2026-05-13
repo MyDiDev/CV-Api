@@ -27,8 +27,7 @@ async def get_api_key(
 )
 async def generate_quizziz(data: dict, api_key=Depends(get_api_key)):
     if not data or not data.get("content") or not data.get("requirements"):
-        print(data)
-        raise HTTPException(status_code=400, detail="Invalid user information")
+        raise HTTPException(status_code=400, detail="Invalid content or requirements information")
     
     if not api_key or len(api_key) == 0:
         raise HTTPException(status_code=400, detail="Invalid API key")
