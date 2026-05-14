@@ -1,6 +1,4 @@
-# CV-Api — Documentación Técnica
-
----
+# CV-Api
 
 ## Descripción General
 
@@ -8,7 +6,6 @@
 
 La API gestiona usuarios, autenticación mediante JWT, API Keys propias como credenciales de acceso, y registra cada operación en base de datos junto al número de tokens consumidos y el tiempo de respuesta.
 
----
 
 ## Stack Tecnológico
 
@@ -27,7 +24,6 @@ La API gestiona usuarios, autenticación mediante JWT, API Keys propias como cre
 | fastapi-limiter | 0.2.0 | Rate limiting por endpoint |
 | pyrate-limiter | 4.1.0 | Motor de rate limiting |
 
----
 
 ## Arquitectura del Proyecto
 
@@ -68,8 +64,6 @@ CV-Api/
 └── README.md
 ```
 
----
-
 ## Endpoints de la API
 
 ### Health Check
@@ -81,7 +75,6 @@ CV-Api/
 | Autenticación | Ninguna |
 | Respuesta | `{ "up": true, "datetime": "<timestamp>" }` |
 
----
 
 ### Registro de usuario
 
@@ -94,8 +87,6 @@ CV-Api/
 | Respuesta OK | `{ "created": true }` |
 | Respuesta Error | `{ "error": "try again and check request" }` |
 
----
-
 ### Login
 
 | Campo | Detalle |
@@ -107,8 +98,6 @@ CV-Api/
 | Respuesta OK | `{ "access_token": "<JWT>" }` |
 | Notas | El token expira según `EXPIRE_TIME` (default: 60 min) |
 
----
-
 ### Obtener API Key
 
 | Campo | Detalle |
@@ -117,8 +106,6 @@ CV-Api/
 | Ruta | `/api/key` |
 | Autenticación | `OAuth2PasswordRequestForm` (username, password) |
 | Respuesta OK | `{ "api_key": "<hash>" }` |
-
----
 
 ### Crear API Key
 
@@ -131,8 +118,6 @@ CV-Api/
 | Respuesta OK | `{ "created": true, "api_key": "<hash>" }` |
 | Respuesta Error | `{ "error": "Invalid data to create api key" }` |
 
----
-
 ### Dashboard de uso
 
 | Campo | Detalle |
@@ -142,8 +127,6 @@ CV-Api/
 | Autenticación | Bearer JWT (header `Authorization`) |
 | Descripción | Retorna logs de uso del API Key del usuario |
 | Respuesta OK | `{ "data": [[tokens_used, status, response_time], ...] }` |
-
----
 
 ### Evaluar CV
 
@@ -158,9 +141,7 @@ CV-Api/
 | Respuesta OK | `{ "result": { ...evaluación JSON..., "document": "<url_pdf>" } }` |
 | Respuesta Error | HTTP 501 con `{ "error": "...", "raw": "..." }` |
 
----
-
-### Generar Quiz de perfil profesional
+### Generar Quiz de perfil profesional 
 
 | Campo | Detalle |
 |---|---|
@@ -172,8 +153,6 @@ CV-Api/
 | Descripción | Genera formulario adaptativo de perfil profesional, con sección específica al puesto si se envían requerimientos |
 | Respuesta OK | `{ "result": { ...quiz JSON... } }` |
 | Notas | `requirements` es **obligatorio** en el body (puede enviarse vacío `""` para omitir sección 3) |
-
----
 
 ### Obtener documentos generados
 
@@ -187,9 +166,7 @@ CV-Api/
 | Respuesta OK | `{ "result": { "documents": [["<url>"], ...] } }` |
 | Respuesta Error | HTTP 400 si no hay documentos |
 
----
-
-## 5. Estructura de las Respuestas de IA
+## Estructura de las Respuestas de IA
 
 ### Evaluación de CV (`/api/curriculum`)
 
@@ -215,8 +192,6 @@ El modelo recibe `role.md` como system prompt y retorna:
 ```
 
 > El campo `document` es procesado internamente: se convierte a PDF con `markdown-pdf`, se sube a Cloudinary, y la URL se guarda en la tabla `documents`. La respuesta al cliente reemplaza el objeto `document` por la URL del PDF.
-
----
 
 ### Quiz de perfil profesional (`/api/curriculum/quiz`)
 
@@ -270,10 +245,37 @@ El modelo recibe `quiz_role.md` y genera hasta **3 secciones**:
 | `scale` | Escala del 1 al 5 |
 | `boolean` | Sí / No |
 
----
+## Esquema de Base de Datos
+
+Inferido del código en `db.py`:
+
+| Tabla | Columnas principales |
+|---|---|
+| `Users` | `user_id`, `username`, `password_hash`, `role` |
+| `ApiKeys` | `key_id`, `owner_id`, `key_hash`, `usage_count`, `rate_limit` |
+| `apilogusage` | `log_id`, `api_key_id`, `tokens_used`, `response_time`, `status` |
+| `documents` | `api_key_id`, `file_url` |
 
 
-## Flujo Interno: Evaluación de CV
+## Configuración y Variables de Entorno
+
+El archivo `.env` debe estar en `src/`:
+
+```env
+POSTGRES_CONNECTION_STRING=postgresql://user:pass@localhost:5432/cvapi
+API_KEY=AIza...                  # Google Generative AI API Key
+SECRET_KEY=mi_clave_secreta      # Clave secreta para firmar JWT
+ALGORITHIM=HS256                 # Algoritmo JWT (mantener typo)
+EXPIRE_TIME=60                   # Expiración del JWT en minutos
+MODEL=gemini-2.5-flash           # Modelo Gemini a usar
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+```
+
+## Evaluación de CV
 
 ```
 POST /api/curriculum  (Bearer <API_KEY>)
@@ -297,8 +299,6 @@ evaluate_cv_document()
   └─ Retorna evaluación JSON con URL del PDF
 ```
 
----
-
 ## Flujo Interno: Quiz
 
 ```
@@ -320,7 +320,15 @@ generate_quiz()
   └─ Retorna quiz JSON (1, 2 o 3 secciones)
 ```
 
----
+### Rate Limiting
+| Endpoint | Límite |
+|---|---|
+| `POST /api/curriculum` | 20 req / 15 minutos |
+| `POST /api/curriculum/quiz` | 5 req / 2 minutos |
+| `GET /api/curriculum/documents` | 5 req / 5 minutos |
+
+### CORS
+- `allow_origins=["*"]` — **restringir en producción**.
 
 ## Flujo de Uso Típico
 
@@ -333,7 +341,3 @@ generate_quiz()
 | 4b | Generar quiz de perfil | `POST /api/curriculum/quiz` |
 | 5 | Ver PDFs generados | `GET /api/curriculum/documents` |
 | 6 | Ver estadísticas de uso | `GET /api/dashboard` |
-
----
-
-*Documentación generada automáticamente por Claude · github.com/MyDiDev/CV-Api*
