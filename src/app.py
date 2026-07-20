@@ -3,13 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.curriculum import curriculum_router
 from routes.user import user_router
 from routes.auth import auth_router
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, 
+app.add_middleware(
+    CORSMiddleware, 
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_headers=["*"]
 )
 
@@ -19,5 +20,7 @@ app.include_router(user_router)
 
 @app.get("/")
 async def get_health() -> dict:
-    return {"up": True, 
-            "datetime": datetime.now()}
+    return {
+        "up": True, 
+        "datetime": datetime.now(timezone.utc).isoformat()
+    }

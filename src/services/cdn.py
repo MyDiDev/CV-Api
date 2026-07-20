@@ -3,22 +3,27 @@ import cloudinary.uploader
 from dotenv import load_dotenv
 from data.db import save_doc_url
 import io
+from typing import Any
 
 load_dotenv()
 
-async def save_document(file_name: str, bytes: io.BytesIO, key_id: int | None) -> dict[str, bool | None | str] | None:
-    if not bytes:
-        print("[!] - Invalid file bytes to save into CDN")
-        return
+async def save_document(file_name: str, bytes_data: io.BytesIO, key_id: int | None) -> dict[str, Any] | None:
+    if not bytes_data:
+        return None
     
+    clean_name = file_name.replace(".md", ".pdf")
     response = cloudinary.uploader.upload(
-        bytes,
-        public_id=f"{file_name.replace(".md", ".pdf")}",
+        bytes_data,
+        public_id=clean_name,
         resource_type="raw"
     )
     
-    res = await save_doc_url(response["url"], key_id)
+    url = response.get("url") if isinstance(response, dict) else None
+    if not url:
+        return None
+        
+    res = await save_doc_url(url, key_id)
     return {
         "res": res,
-        "url":response.get("url")
+        "url": url
     }
