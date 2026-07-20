@@ -1,6 +1,6 @@
 from google import genai
 from google.api_core.exceptions import ServiceUnavailable
-from data.db import register_log, update_log
+from repository.log_repository import LogRepository
 from dotenv import load_dotenv
 from services.cdn import save_document
 from dto.user import APIKey
@@ -53,7 +53,7 @@ async def create_and_save_document(file_name: str, document_content: str, api_ke
 
 async def update_task_log(log_res: Any, response_time: float) -> None:
     if log_res and isinstance(log_res, (list, tuple)) and len(log_res) > 0:
-        await update_log(Log(id=log_res[0], status="done", response_time=response_time))
+        await LogRepository.update_log(Log(id=log_res[0], status="done", response_time=response_time))
 
 async def evaluate_cv_document(content: str, api_key: APIKey) -> dict[str, Any]:
     if not content:
@@ -65,7 +65,7 @@ async def evaluate_cv_document(content: str, api_key: APIKey) -> dict[str, Any]:
         prompt_text = f"{MODEL_ROLE}\n\nEvaluate this CV:\n\n{content}"
         tokens_count = count_tokens(prompt_text)
         
-        log_entry = await register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
+        log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
         log_res = log_entry.get("log") if log_entry else None
         
         response = client.models.generate_content(
@@ -119,7 +119,7 @@ async def generate_quiz(data: str, api_key: APIKey, requirements: str) -> dict[s
         
         tokens_count = count_tokens(prompt_text)
         
-        log_entry = await register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
+        log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
         log_res = log_entry.get("log") if log_entry else None
         
         response = client.models.generate_content(

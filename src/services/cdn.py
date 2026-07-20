@@ -1,7 +1,7 @@
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
-from data.db import save_doc_url
+from repository.document_repository import DocumentRepository
 import io
 from typing import Any
 
@@ -22,7 +22,7 @@ async def save_document(file_name: str, bytes_data: io.BytesIO, key_id: int | No
     if not url:
         return None
         
-    res = await save_doc_url(url, key_id)
+    res = await DocumentRepository.save_doc_url(url, key_id)
     return {
         "res": res,
         "url": url

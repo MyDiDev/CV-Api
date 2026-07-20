@@ -1,11 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.curriculum import curriculum_router
-from routes.user import user_router
-from routes.auth import auth_router
+from routes.v1 import v1_router, legacy_router
 from datetime import datetime, timezone
 
-app = FastAPI()
+app = FastAPI(title="CV-Api", version="1.0.0")
 app.add_middleware(
     CORSMiddleware, 
     allow_origins=["*"],
@@ -14,9 +12,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-app.include_router(curriculum_router)
-app.include_router(auth_router)
-app.include_router(user_router)
+app.include_router(v1_router)
+app.include_router(legacy_router)
 
 @app.get("/")
 async def get_health() -> dict:
