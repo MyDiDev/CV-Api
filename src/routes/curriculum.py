@@ -13,6 +13,7 @@ from typing import Any
 security = HTTPBearer()
 curriculum_router = APIRouter()
 
+
 async def get_api_key(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> Any:
@@ -24,8 +25,11 @@ async def get_api_key(
     
     return res.get("api_key")
 
-@curriculum_router.post("/curriculum/quiz", tags=["curriculums"],
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 2))))]                    
+
+@curriculum_router.post(
+    "/curriculum/quiz",
+    tags=["curriculums"],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))]
 )
 async def generate_quizziz(data: dict[str, Any], api_key: Any = Depends(get_api_key)) -> dict[str, Any]:
     if not data or not data.get("content") or not data.get("requirements"):
@@ -39,8 +43,11 @@ async def generate_quizziz(data: dict[str, Any], api_key: Any = Depends(get_api_
     res = await generate_quiz(str(data.get("content", "")), key_obj, str(data.get("requirements", "")))
     return {"result": res}
 
-@curriculum_router.post("/curriculum", tags=["curriculums"],
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE * 15))))]
+
+@curriculum_router.post(
+    "/curriculum",
+    tags=["curriculums"],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE * 10))))]
 )
 async def evaluate_curriculum(data: dict[str, Any], api_key: Any = Depends(get_api_key)) -> dict[str, Any]:
     if not data or not data.get("content"):
@@ -57,8 +64,11 @@ async def evaluate_curriculum(data: dict[str, Any], api_key: Any = Depends(get_a
         raise HTTPException(status_code=500, detail="Error evaluating CV document")
     return {"result": res}
 
-@curriculum_router.get("/curriculum/documents", tags=["curriculums"], 
-    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE * 5))))]                       
+
+@curriculum_router.get(
+    "/curriculum/documents",
+    tags=["curriculums"],
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(10, Duration.MINUTE * 5))))]
 )
 async def get_user_documents(api_key: Any = Depends(get_api_key)) -> dict[str, Any]:
     if not api_key:

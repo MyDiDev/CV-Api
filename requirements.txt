@@ -8,3 +8,7 @@ psycopg[binary]
 fastapi-limiter
 markdown-pdf
 cloudinary
+redis>=5.0.0
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx

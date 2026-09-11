@@ -6,10 +6,16 @@ from typing import Annotated, Any
 from repository.api_key_repository import ApiKeyRepository
 from services.tokenizer import get_token
 from dto.user import UserDTO
+from pyrate_limiter import Duration, Limiter, Rate
+from fastapi_limiter.depends import RateLimiter
 
 user_router = APIRouter()
 
-@user_router.post("/key")
+
+@user_router.post(
+    "/key",
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))]
+)
 async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict[str, Any]:
     if not data.username or not data.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
@@ -19,7 +25,11 @@ async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
         raise HTTPException(status_code=404, detail="API key not found")
     return {"api_key": api_keys}
 
-@user_router.post("/create/key")
+
+@user_router.post(
+    "/create/key",
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))]
+)
 async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict[str, Any]:
     if not data.username or not data.password:
         raise HTTPException(status_code=400, detail="Invalid credentials")
@@ -32,7 +42,11 @@ async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]) 
         
     return {"created": True, "api_key": res}
 
-@user_router.get("/dashboard")
+
+@user_router.get(
+    "/dashboard",
+    dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(20, Duration.MINUTE))))]
+)
 async def get_api_dashboard_info(token: dict[str, Any] = Depends(get_token)) -> dict[str, Any]:        
     user = UserDTO(username=token.get("username"), password=token.get("password"))
     if not user.username or not user.password:

@@ -1,7 +1,12 @@
+import os
+import hashlib
 from data.db import get_db, hash_api_key, create_api_key
 from repository.user_repository import UserRepository
 from dto.user import UserDTO, APIKey
+from services.redis_service import RedisService
 from typing import Any
+
+API_KEY_CACHE_TTL = int(os.getenv("API_KEY_CACHE_TTL", "300"))
 
 class ApiKeyRepository:
     @staticmethod
@@ -9,6 +14,12 @@ class ApiKeyRepository:
         if not key:
             return None
         
+        token_hash = hashlib.sha256(key.encode("utf-8")).hexdigest()
+        cache_key = f"cache:apikey:{token_hash}"
+        cached = await RedisService.get_json(cache_key)
+        if cached is not None and isinstance(cached, dict):
+            return cached
+
         key_hash = hash_api_key(key)
         with get_db() as (conn, cursor):
             cursor.execute("SELECT * FROM ApiKeys WHERE key_hash=%s OR key_hash=%s", [key_hash, key])
@@ -17,7 +28,9 @@ class ApiKeyRepository:
         if res is None:
             return None
             
-        return {"api_key": res}
+        result = {"api_key": res}
+        await RedisService.set_json(cache_key, result, ttl=API_KEY_CACHE_TTL)
+        return result
 
     @staticmethod
     async def get_user_api_key(user: UserDTO) -> str | None:
@@ -67,6 +80,10 @@ class ApiKeyRepository:
         
         with get_db() as (conn, cursor):
             cursor.execute("DELETE FROM ApiKeys WHERE owner_id = %s AND key_hash = %s", [key.owner_id, key.key_hash])
+        
+        token_hash = hashlib.sha256(key.key_hash.encode("utf-8")).hexdigest()
+        await RedisService.delete(f"cache:apikey:{token_hash}")
+        await RedisService.delete(f"cache:apikey:{key.key_hash}")
         return True
 
     @staticmethod

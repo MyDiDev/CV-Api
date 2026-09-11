@@ -1,19 +1,23 @@
-from google import genai
-from google.api_core.exceptions import ServiceUnavailable
-from repository.log_repository import LogRepository
-from dotenv import load_dotenv
-from services.cdn import save_document
-from dto.user import APIKey
-from dto.logs import Log
-from markdown_pdf import MarkdownPdf, Section
-from typing import Any
-import time
+import hashlib
 import json
 import os
 import io
+import time
+from typing import Any
+from dotenv import load_dotenv
+from markdown_pdf import MarkdownPdf, Section
+from google.api_core.exceptions import ServiceUnavailable
+
+from dto.user import APIKey
+from dto.logs import Log
+from repository.log_repository import LogRepository
+from services.cdn import save_document
+from services.gemini_balancer import gemini_balancer
+from services.redis_service import RedisService
 
 load_dotenv()
 MODEL = os.getenv("MODEL") or "gemini-2.5-flash"
+AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL", "86400"))
 
 MODEL_ROLE = ""
 MODEL_QUIZ_ROLE = ""
@@ -29,14 +33,11 @@ def load_model_roles() -> None:
 
 load_model_roles()
 
-client = genai.Client(api_key=os.getenv("API_KEY"))
-
-def count_tokens(content: str) -> Any:
-    tokens_count = client.models.count_tokens(
+async def count_tokens(content: str) -> Any:
+    return await gemini_balancer.count_tokens(
         model=MODEL,
         contents={"text": content}
     )
-    return tokens_count
 
 async def create_and_save_document(file_name: str, document_content: str, api_key_id: int | None) -> str | None:
     pdf = MarkdownPdf()
@@ -60,15 +61,24 @@ async def evaluate_cv_document(content: str, api_key: APIKey) -> dict[str, Any]:
         return {"error": "Invalid CV document content to process"}
     
     start_time = time.time()
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    cache_key = f"cache:ai:cv:{content_hash}"
     
     try:
+        cached_data = await RedisService.get_json(cache_key)
+        if cached_data is not None and isinstance(cached_data, dict):
+            log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=0))
+            log_res = log_entry.get("log") if log_entry else None
+            await update_task_log(log_res, time.time() - start_time)
+            return cached_data
+
         prompt_text = f"{MODEL_ROLE}\n\nEvaluate this CV:\n\n{content}"
-        tokens_count = count_tokens(prompt_text)
+        tokens_count = await count_tokens(prompt_text)
         
         log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
         log_res = log_entry.get("log") if log_entry else None
         
-        response = client.models.generate_content(
+        response = await gemini_balancer.generate_content(
             model=MODEL,
             contents={"text": prompt_text},
             config={
@@ -100,6 +110,7 @@ async def evaluate_cv_document(content: str, api_key: APIKey) -> dict[str, Any]:
         
         res_url = await create_and_save_document(document["file_name"], document["content"], api_key.id)
         data["document"] = res_url
+        await RedisService.set_json(cache_key, data, ttl=AI_CACHE_TTL)
         return data
       
     except ServiceUnavailable:
@@ -114,15 +125,25 @@ async def generate_quiz(data: str, api_key: APIKey, requirements: str) -> dict[s
       
     try:
         start_time = time.time()
+        prompt_hash = hashlib.sha256(f"{data}::{requirements}".encode("utf-8")).hexdigest()
+        cache_key = f"cache:ai:quiz:{prompt_hash}"
+
+        cached_data = await RedisService.get_json(cache_key)
+        if cached_data is not None and isinstance(cached_data, dict):
+            log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=0))
+            log_res = log_entry.get("log") if log_entry else None
+            await update_task_log(log_res, time.time() - start_time)
+            return cached_data
+
         company_requirements = f"\n\nCOMPANY REQUIREMENTS: \n{requirements}" if requirements else ""
         prompt_text = f"{MODEL_QUIZ_ROLE}\n\nGenerate a quiz for a person, whose information is:\n\n{data}{company_requirements}"
         
-        tokens_count = count_tokens(prompt_text)
+        tokens_count = await count_tokens(prompt_text)
         
         log_entry = await LogRepository.register_log(Log(api_key_id=api_key.id, tokens_used=getattr(tokens_count, 'total_tokens', 0)))
         log_res = log_entry.get("log") if log_entry else None
         
-        response = client.models.generate_content(
+        response = await gemini_balancer.generate_content(
             model=MODEL, 
             contents={"text": prompt_text},
             config={
@@ -147,7 +168,9 @@ async def generate_quiz(data: str, api_key: APIKey, requirements: str) -> dict[s
         res_txt = res_txt.strip()
         
         await update_task_log(log_res, end_time - start_time)
-        return json.loads(res_txt)
+        parsed_json = json.loads(res_txt)
+        await RedisService.set_json(cache_key, parsed_json, ttl=AI_CACHE_TTL)
+        return parsed_json
 
     except ServiceUnavailable:
         return {"error": "Servers are overloaded to generate the quiz"}
