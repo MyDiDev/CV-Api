@@ -2,8 +2,10 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import patch, AsyncMock
 from fastapi import Request
-from app import app, custom_rate_limit_identifier, custom_http_callback, FastAPILimiter, lifespan
+from app import app, lifespan
+from services.rate_limiter import FastAPILimiter, default_identifier, default_http_callback, RateLimiter
 from services.redis_service import RedisService
+from pyrate_limiter import Limiter, Rate, Duration
 
 
 @pytest.mark.asyncio
@@ -25,7 +27,7 @@ async def test_custom_rate_limit_identifier_bearer():
         "headers": [(b"authorization", b"Bearer sample-api-key-12345")],
     }
     request = Request(scope)
-    identifier = await custom_rate_limit_identifier(request)
+    identifier = await default_identifier(request)
     assert identifier == "sample-api-key-12345"
 
 
@@ -38,7 +40,7 @@ async def test_custom_rate_limit_identifier_forwarded_for():
         "headers": [(b"x-forwarded-for", b"203.0.113.195, 70.41.3.18")],
     }
     request = Request(scope)
-    identifier = await custom_rate_limit_identifier(request)
+    identifier = await default_identifier(request)
     assert identifier == "203.0.113.195"
 
 
@@ -52,7 +54,7 @@ async def test_custom_rate_limit_identifier_client_host():
         "client": ("192.168.1.50", 12345),
     }
     request = Request(scope)
-    identifier = await custom_rate_limit_identifier(request)
+    identifier = await default_identifier(request)
     assert identifier == "192.168.1.50"
 
 
@@ -66,7 +68,7 @@ async def test_custom_rate_limit_identifier_fallback():
         "client": None,
     }
     request = Request(scope)
-    identifier = await custom_rate_limit_identifier(request)
+    identifier = await default_identifier(request)
     assert identifier == "127.0.0.1"
 
 
@@ -82,7 +84,7 @@ async def test_custom_http_callback():
     request = Request(scope)
     
     with pytest.raises(HTTPException) as exc_info:
-        await custom_http_callback(request, None, pexpire=5000)
+        await default_http_callback(request, None, pexpire=5000)
     
     assert exc_info.value.status_code == 429
     assert "Too Many Requests. Rate limit exceeded. Retry in 5 seconds." in exc_info.value.detail
@@ -99,8 +101,8 @@ async def test_fastapi_limiter_init_and_lifespan():
         async with lifespan(app):
             mock_limiter_init.assert_awaited_once_with(
                 mock_redis,
-                identifier=custom_rate_limit_identifier,
-                http_callback=custom_http_callback
+                identifier=default_identifier,
+                http_callback=default_http_callback
             )
             mock_close.assert_not_awaited()
         

@@ -7,7 +7,7 @@ from repository.api_key_repository import ApiKeyRepository
 from services.tokenizer import get_token
 from dto.user import UserDTO
 from pyrate_limiter import Duration, Limiter, Rate
-from fastapi_limiter.depends import RateLimiter
+from services.rate_limiter import RateLimiter
 
 user_router = APIRouter()
 

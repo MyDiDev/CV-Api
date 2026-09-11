@@ -7,7 +7,7 @@ from repository.api_key_repository import ApiKeyRepository
 from repository.document_repository import DocumentRepository
 from dto.user import APIKey
 from pyrate_limiter import Duration, Limiter, Rate
-from fastapi_limiter.depends import RateLimiter
+from services.rate_limiter import RateLimiter
 from typing import Any
 
 security = HTTPBearer()
