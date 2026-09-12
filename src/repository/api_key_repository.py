@@ -1,3 +1,4 @@
+from dotenv import load_dotenv, find_dotenv
 import os
 import hashlib
 from data.db import get_db, hash_api_key, create_api_key
@@ -6,6 +7,7 @@ from dto.user import UserDTO, APIKey
 from services.redis_service import RedisService
 from typing import Any
 
+load_dotenv(find_dotenv())
 API_KEY_CACHE_TTL = int(os.getenv("API_KEY_CACHE_TTL", "300"))
 
 class ApiKeyRepository:

@@ -6,9 +6,9 @@ from decimal import Decimal
 from uuid import UUID
 from typing import Any
 import redis.asyncio as aioredis
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+load_dotenv(find_dotenv())
 logger = logging.getLogger("redis_service")
 
 
@@ -45,9 +45,9 @@ class RedisService:
                     socket_connect_timeout=2,
                     socket_timeout=2,
                 )
-                logger.info("Redis client successfully created")
+                logger.info(f"[REDIS CONNECTED] Successfully connected to Redis at '{redis_url}'")
             except Exception as e:
-                logger.warning(f"Failed to create Redis client: {e}")
+                logger.warning(f"[REDIS OFFLINE] Failed to create Redis client: {e}")
                 return None
         return cls._client
 
@@ -59,11 +59,12 @@ class RedisService:
                 return None
             data = await client.get(key)
             if data is None:
+                logger.info(f"[REDIS CACHE MISS] key='{key}'")
                 return None
-            logger.info(f"Redis get data action executed successfully for key '{key}'")
+            logger.info(f"[REDIS CACHE HIT] key='{key}'")
             return json.loads(data)
         except Exception as e:
-            logger.warning(f"Redis get_json error for key '{key}': {e}")
+            logger.warning(f"[REDIS ERROR] get_json failed for key '{key}': {e}")
             return None
 
     @classmethod
@@ -74,10 +75,10 @@ class RedisService:
                 return False
             payload = json.dumps(value, default=json_serializer)
             await client.set(key, payload, ex=ttl)
-            logger.info(f"Redis set data action executed successfully for key '{key}'")
+            logger.info(f"[REDIS CACHE STORED] key='{key}' (TTL={ttl}s)")
             return True
         except Exception as e:
-            logger.warning(f"Redis set_json error for key '{key}': {e}")
+            logger.warning(f"[REDIS ERROR] set_json failed for key '{key}': {e}")
             return False
 
     @classmethod
@@ -87,10 +88,10 @@ class RedisService:
             if client is None:
                 return False
             await client.delete(key)
-            logger.info(f"Redis delete key action executed successfully for key '{key}'")
+            logger.info(f"[REDIS KEY DELETED] key='{key}'")
             return True
         except Exception as e:
-            logger.warning(f"Redis delete error for key '{key}': {e}")
+            logger.warning(f"[REDIS ERROR] delete failed for key '{key}': {e}")
             return False
 
     @classmethod
@@ -100,17 +101,17 @@ class RedisService:
             if client is None:
                 return False
             res = await client.exists(key)
-            logger.info(f"Redis check action executed successfully for key '{key}'")
+            logger.info(f"[REDIS KEY EXISTS] key='{key}' exists={bool(res)}")
             return bool(res)
         except Exception as e:
-            logger.warning(f"Redis exists error for key '{key}': {e}")
+            logger.warning(f"[REDIS ERROR] exists failed for key '{key}': {e}")
             return False
 
     @classmethod
     async def close(cls) -> None:
         if cls._client is not None:
             try:
-                logger.info("Closing redis client")
+                logger.info("[REDIS CLOSED] Closing Redis client connection pool")
                 await cls._client.aclose()
             except Exception:
                 pass

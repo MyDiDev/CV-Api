@@ -7,6 +7,10 @@ from routes.v1 import v1_router, legacy_router
 from services.redis_service import RedisService
 from services.rate_limiter import FastAPILimiter, default_identifier, default_http_callback
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger("app")
 
 

@@ -4,9 +4,10 @@ import os
 import io
 import time
 from typing import Any
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from markdown_pdf import MarkdownPdf, Section
 from google.api_core.exceptions import ServiceUnavailable
+import logging
 
 from dto.user import APIKey
 from dto.logs import Log
@@ -15,7 +16,8 @@ from services.cdn import save_document
 from services.gemini_balancer import gemini_balancer
 from services.redis_service import RedisService
 
-load_dotenv()
+load_dotenv(find_dotenv())
+logger = logging.getLogger("model")
 MODEL = os.getenv("MODEL") or "gemini-2.5-flash"
 AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL", "86400"))
 
