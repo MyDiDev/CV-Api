@@ -1,5 +1,8 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from datetime import datetime, date, timezone
+from decimal import Decimal
+from uuid import UUID
+from unittest.mock import AsyncMock, patch
 from services.redis_service import RedisService
 
 
@@ -19,6 +22,33 @@ async def test_redis_service_set_and_get_json():
         res_get = await RedisService.get_json("test_key")
         assert res_get == {"foo": "bar"}
         mock_redis.get.assert_awaited_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_redis_service_datetime_and_complex_types_serialization():
+    mock_redis = AsyncMock()
+    mock_redis.set.return_value = True
+
+    now = datetime(2026, 9, 11, 20, 50, 0, tzinfo=timezone.utc)
+    today = date(2026, 9, 11)
+    test_uuid = UUID("12345678-1234-5678-1234-567812345678")
+    test_decimal = Decimal("45.99")
+
+    complex_data = {
+        "api_key": (1, "hash_value", 10, now, today),
+        "id": test_uuid,
+        "price": test_decimal,
+    }
+
+    with patch.object(RedisService, "get_raw_client", return_value=mock_redis):
+        res_set = await RedisService.set_json("complex_key", complex_data, ttl=300)
+        assert res_set is True
+        mock_redis.set.assert_awaited_once()
+        saved_payload = mock_redis.set.call_args[0][1]
+        assert "2026-09-11T20:50:00+00:00" in saved_payload
+        assert "2026-09-11" in saved_payload
+        assert "12345678-1234-5678-1234-567812345678" in saved_payload
+        assert "45.99" in saved_payload
 
 
 @pytest.mark.asyncio

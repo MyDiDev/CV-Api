@@ -12,15 +12,16 @@ from services.rate_limiter import RateLimiter
 user_router = APIRouter()
 
 
-@user_router.post(
+@user_router.get(
     "/key",
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))]
 )
-async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict[str, Any]:
-    if not data.username or not data.password:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+async def get_api_keys(token: dict[str, Any] = Depends(get_token)) -> dict[str, Any]:
+    user = UserDTO(username=token.get("username"), password=token.get("password"))
+    if not user or not user.username or not user.password:
+        raise HTTPException(status_code=401, detail="Invalid user credentials")
     
-    api_keys = await ApiKeyRepository.get_user_api_key(UserDTO(username=data.username, password=data.password))
+    api_keys = await ApiKeyRepository.get_user_api_key(user)
     if not api_keys:
         raise HTTPException(status_code=404, detail="API key not found")
     return {"api_key": api_keys}
@@ -30,11 +31,11 @@ async def get_api_keys(data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
     "/create/key",
     dependencies=[Depends(RateLimiter(limiter=Limiter(Rate(5, Duration.MINUTE))))]
 )
-async def create_api_key(data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict[str, Any]:
-    if not data.username or not data.password:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+async def create_api_key(token: dict[str, Any] = Depends(get_token)) -> dict[str, Any]:
+    user = UserDTO(username=token.get("username"), password=token.get("password"))
+    if not user or not user.username or not user.password:
+        raise HTTPException(status_code=401, detail="Invalid user credentials")
     
-    user = UserDTO(username=data.username, password=data.password)
     res = await ApiKeyRepository.save_api_key(user)
     
     if res is None:
