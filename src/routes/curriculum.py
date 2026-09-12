@@ -1,3 +1,5 @@
+import logging
+from typing import Any
 from fastapi import Depends
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
@@ -8,8 +10,8 @@ from repository.document_repository import DocumentRepository
 from dto.user import APIKey
 from pyrate_limiter import Duration, Limiter, Rate
 from services.rate_limiter import RateLimiter
-from typing import Any
 
+logger = logging.getLogger("curriculum_routes")
 security = HTTPBearer()
 curriculum_router = APIRouter()
 
@@ -41,6 +43,9 @@ async def generate_quizziz(data: dict[str, Any], api_key: Any = Depends(get_api_
     key_id = api_key[0] if isinstance(api_key, (list, tuple)) else api_key
     key_obj = APIKey(id=key_id)
     res = await generate_quiz(str(data.get("content", "")), key_obj, str(data.get("requirements", "")))
+    if isinstance(res, dict) and res.get("error"):
+        logger.error(f"Quiz generation error: {res.get('error')}")
+        raise HTTPException(status_code=500, detail=f"Error generating quiz: {res.get('error')}")
     return {"result": res}
 
 
@@ -61,7 +66,8 @@ async def evaluate_curriculum(data: dict[str, Any], api_key: Any = Depends(get_a
     res = await evaluate_cv_document(str(data.get("content", "")), key_obj)
 
     if isinstance(res, dict) and res.get("error"):
-        raise HTTPException(status_code=500, detail="Error evaluating CV document")
+        logger.error(f"CV evaluation error: {res.get('error')}")
+        raise HTTPException(status_code=500, detail=f"Error evaluating CV document: {res.get('error')}")
     return {"result": res}
 
 

@@ -33,10 +33,17 @@ def json_serializer(obj: Any) -> Any:
 
 class RedisService:
     _client: aioredis.Redis | None = None
+    _loop: Any = None
 
     @classmethod
     def get_raw_client(cls) -> aioredis.Redis | None:
-        if cls._client is None:
+        try:
+            import asyncio
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if cls._client is None or cls._loop != current_loop:
             redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
             try:
                 cls._client = aioredis.from_url(
@@ -45,6 +52,7 @@ class RedisService:
                     socket_connect_timeout=2,
                     socket_timeout=2,
                 )
+                cls._loop = current_loop
                 logger.info(f"[REDIS CONNECTED] Successfully connected to Redis at '{redis_url}'")
             except Exception as e:
                 logger.warning(f"[REDIS OFFLINE] Failed to create Redis client: {e}")
